@@ -1,0 +1,9 @@
+# One-click deploy config for Render (https://render.com)
+services:
+  - type: web
+    name: english-quest-multiplayer
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz

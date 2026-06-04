@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>วิธีนำ English Quest ขึ้นออนไลน์ (Multiplayer)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=JetBrains+Mono:wght@400;600&family=Fredoka:wght@400;500;600&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{--ink:#2e2417;--muted:#7a6647;--card:#fff8e9;--line:#caa86a;--green:#2e7d32;--blue:#1d5494;--gold:#a9760e;--red:#a83a30;--purple:#5f3a8e;}
+  body{font-family:'Fredoka',sans-serif;color:var(--ink);background:radial-gradient(circle at 15% 8%,rgba(255,255,255,.4),transparent 45%),linear-gradient(170deg,#2a3d24,#16241a 70%);min-height:100vh;padding:24px 14px;}
+  .wrap{max-width:780px;margin:0 auto;}
+  h1{font-family:'Baloo 2';font-weight:800;font-size:28px;color:#ffe9a8;text-shadow:2px 2px 0 #5a3d04;text-align:center;}
+  .sub{font-size:13px;color:#cdbb90;text-align:center;margin-bottom:20px;}
+  .card{background:var(--card);border:3px solid var(--line);border-radius:16px;padding:18px 22px;margin-bottom:15px;box-shadow:0 5px 0 rgba(120,85,40,.5),inset 0 1px 0 #fffdf0;}
+  .card h2{font-family:'Baloo 2';font-weight:700;font-size:20px;margin-bottom:11px;display:flex;align-items:center;gap:9px;color:var(--ink);}
+  .card h3{font-family:'Baloo 2';font-weight:600;font-size:15px;margin:15px 0 6px;color:var(--blue);}
+  p,li{font-size:14px;line-height:1.75;}
+  ul,ol{margin:8px 0 8px 6px;}
+  ol{padding-left:20px;}
+  ol li{margin-bottom:8px;}
+  ul{list-style:none;}
+  ul li{padding-left:22px;position:relative;margin-bottom:5px;}
+  ul li::before{content:"▸";position:absolute;left:4px;color:var(--gold);font-weight:700;}
+  code{font-family:'JetBrains Mono',monospace;background:#efe1c0;color:#6b4a1f;padding:1px 6px;border-radius:5px;font-size:13px;font-weight:600;}
+  pre{font-family:'JetBrains Mono',monospace;background:#221c12;color:#e8d6a8;padding:13px 16px;border-radius:10px;font-size:13px;line-height:1.6;overflow-x:auto;margin:8px 0;border:2px solid #3a2f1c;}
+  pre .c{color:#9c8a5a;}
+  .files{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px;}
+  .file{background:#fffdf6;border:2px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px;}
+  .file b{font-family:'JetBrains Mono',monospace;color:var(--blue);font-size:12px;}
+  .file span{display:block;color:var(--muted);font-size:11px;margin-top:2px;}
+  .step{counter-increment:step;display:flex;gap:13px;align-items:flex-start;margin-bottom:14px;}
+  .step .n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--purple);color:#fff;font-family:'Baloo 2';font-weight:700;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 3px 0 rgba(0,0,0,.2);}
+  .step .b{flex:1;}
+  .step .b b{color:var(--ink);}
+  .tip{background:#eef7ff;border:2px solid #c4ddf5;border-radius:11px;padding:12px 15px;font-size:13px;color:var(--blue);margin-top:11px;}
+  .warn{background:#fbe9e7;border:2px solid #f0c4bd;border-radius:11px;padding:12px 15px;font-size:13px;color:var(--red);margin-top:11px;}
+  .ok{background:#e7f6e9;border:2px solid #bce0bf;border-radius:11px;padding:12px 15px;font-size:13px;color:var(--green);margin-top:11px;}
+  .badge{display:inline-block;background:var(--gold);color:#fff;font-weight:700;font-size:11px;padding:2px 9px;border-radius:999px;margin-left:6px;}
+  .foot{text-align:center;font-size:12px;color:#cdbb90;margin-top:18px;line-height:1.6;}
+  a{color:var(--blue);font-weight:600;}
+  .hl{color:#ffe9a8;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🌐 นำ English Quest ขึ้นออนไลน์</h1>
+  <p class="sub">คู่มือทำให้เด็กหลายคนเล่นพร้อมกันในแมพเดียว (Real-time Multiplayer)</p>
+
+  <div class="card">
+    <h2>📦 ไฟล์ในชุดนี้</h2>
+    <p>โฟลเดอร์ <code>eq-mp</code> มีไฟล์ที่ต้องอัปขึ้นเซิร์ฟเวอร์ทั้งหมด:</p>
+    <div class="files">
+      <div class="file"><b>server.js</b><span>ตัวเซิร์ฟเวอร์ (Node + WebSocket)</span></div>
+      <div class="file"><b>package.json</b><span>รายการ dependency + คำสั่งรัน</span></div>
+      <div class="file"><b>public/index.html</b><span>ตัวเกม (client)</span></div>
+      <div class="file"><b>render.yaml</b><span>ตั้งค่า deploy อัตโนมัติ</span></div>
+      <div class="file"><b>.gitignore</b><span>ไฟล์ที่ไม่ต้องอัป</span></div>
+    </div>
+    <div class="tip">💡 เซิร์ฟเวอร์ทำหน้าที่ 2 อย่าง: (1) ส่งหน้าเกมให้ผู้เล่น และ (2) เป็นตัวกลางส่งตำแหน่ง/แชทระหว่างผู้เล่น ทุกคนจึงเห็นกันแบบเรียลไทม์</div>
+  </div>
+
+  <div class="card">
+    <h2>🧪 ทดสอบบนเครื่องตัวเองก่อน (ไม่บังคับ)</h2>
+    <p>ถ้ามี <a href="https://nodejs.org" target="_blank">Node.js</a> (เวอร์ชัน 18 ขึ้นไป) ติดตั้งแล้ว เปิด Terminal ในโฟลเดอร์ <code>eq-mp</code> แล้วพิมพ์:</p>
+    <pre><span class="c"># ติดตั้ง dependency (ครั้งแรกครั้งเดียว)</span>
+npm install
+
+<span class="c"># รันเซิร์ฟเวอร์</span>
+npm start</pre>
+    <p>จากนั้นเปิดเบราว์เซอร์ไปที่ <code>http://localhost:3000</code> — ลองเปิด 2 แท็บ ใส่ชื่อต่างกัน กด "เริ่มเล่น" จะเห็นตัวละครอีกตัวเดินในแมพเดียวกัน</p>
+    <div class="ok">✓ ถ้าเห็นตัวละครอีกคนเดินตามได้ แปลว่าระบบ multiplayer ทำงานถูกต้อง พร้อมนำขึ้นออนไลน์</div>
+  </div>
+
+  <div class="card">
+    <h2>🚀 วิธีที่ 1: Render <span class="badge">แนะนำ — ฟรี</span></h2>
+    <p>ง่ายและรองรับ WebSocket เต็มรูปแบบ มีไฟล์ <code>render.yaml</code> ตั้งค่าให้แล้ว</p>
+    <div class="step"><div class="n">1</div><div class="b">สมัคร <a href="https://render.com" target="_blank">render.com</a> (ฟรี) — ล็อกอินด้วย GitHub ได้เลย</div></div>
+    <div class="step"><div class="n">2</div><div class="b">อัปโฟลเดอร์ <code>eq-mp</code> ขึ้น <b>GitHub repository</b> ใหม่ (ลากไฟล์ทั้งหมดเข้าไป commit)</div></div>
+    <div class="step"><div class="n">3</div><div class="b">ใน Render กด <b>New → Web Service</b> แล้วเลือก repo ที่เพิ่งสร้าง</div></div>
+    <div class="step"><div class="n">4</div><div class="b">Render จะอ่าน <code>render.yaml</code> เอง — ตรวจว่า Build = <code>npm install</code>, Start = <code>npm start</code> แล้วกด <b>Create Web Service</b></div></div>
+    <div class="step"><div class="n">5</div><div class="b">รอ build เสร็จ (~1-2 นาที) จะได้ลิงก์เช่น <code>https://english-quest-xxx.onrender.com</code> — <b>นี่คือลิงก์เกมของคุณ</b> แจกให้เด็กได้เลย</div></div>
+    <div class="warn">⚠️ แพ็กเกจฟรีของ Render จะ "หลับ" หลังไม่มีคนเล่น ~15 นาที ครั้งแรกที่เปิดอาจรอ ~30 วินาทีให้ตื่น หลังจากนั้นจะลื่นปกติ</div>
+  </div>
+
+  <div class="card">
+    <h2>🚂 วิธีที่ 2: Railway</h2>
+    <ul>
+      <li>สมัคร <a href="https://railway.app" target="_blank">railway.app</a></li>
+      <li>กด <b>New Project → Deploy from GitHub repo</b> เลือก repo <code>eq-mp</code></li>
+      <li>Railway ตรวจเจอ Node เอง รันด้วย <code>npm start</code> อัตโนมัติ</li>
+      <li>ไปที่ <b>Settings → Networking → Generate Domain</b> เพื่อรับลิงก์สาธารณะ</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>🎏 วิธีที่ 3: Glitch <span class="badge">ไม่ต้องใช้ GitHub</span></h2>
+    <ul>
+      <li>เข้า <a href="https://glitch.com" target="_blank">glitch.com</a> กด <b>New Project → Import from GitHub</b> หรือสร้าง Node project แล้วลากไฟล์เข้าไป</li>
+      <li>Glitch รัน <code>npm start</code> ให้เอง และรองรับ WebSocket</li>
+      <li>ลิงก์จะเป็นแบบ <code>https://ชื่อโปรเจกต์.glitch.me</code></li>
+    </ul>
+    <div class="tip">💡 Glitch เหมาะถ้าอยากแก้โค้ดออนไลน์โดยไม่ต้องตั้ง GitHub แต่โปรเจกต์ฟรีจะหลับเร็วกว่า Render</div>
+  </div>
+
+  <div class="card">
+    <h2>🎮 วิธีเล่นเมื่อขึ้นออนไลน์แล้ว</h2>
+    <ol>
+      <li>แจกลิงก์เซิร์ฟเวอร์ให้นักเรียน (เช่นผ่าน QR code บนกระดาน)</li>
+      <li>นักเรียนเปิดลิงก์ → เลือกชั้น → ตั้งชื่อ → สร้างตัวละคร → กด "เริ่มเล่น"</li>
+      <li>ทุกคนที่อยู่ <b>โซนเดียวกัน</b> จะเห็นตัวละครของกันและกัน พร้อมชื่อและเลเวลลอยอยู่เหนือหัว</li>
+      <li>มุมขวาบนแสดง <b>จำนวนคนออนไลน์ 👥</b> และสถานะการเชื่อมต่อ</li>
+      <li>ใช้ช่อง <b>💬 แชท</b> คุยกับคนในโซนเดียวกันได้</li>
+    </ol>
+    <div class="ok">✓ ความคืบหน้า เลเวล และไอเทม เป็นของแต่ละคน (เก็บในเครื่องตัวเอง) — เซิร์ฟเวอร์แค่ซิงค์ตำแหน่งและแชทให้เห็นกัน</div>
+  </div>
+
+  <div class="card">
+    <h2>🔧 เคล็ดลับ & แก้ปัญหา</h2>
+    <h3>แยกโฮสต์ client กับ server</h3>
+    <p>ถ้าอยากวางตัวเกมไว้ที่อื่น (เช่น GitHub Pages) แต่ใช้เซิร์ฟเวอร์ที่ Render ให้เปิดเกมด้วยลิงก์แบบนี้:</p>
+    <pre>https://ที่อยู่เกมของคุณ/?server=wss://english-quest-xxx.onrender.com</pre>
+    <p>เกมจะเชื่อมต่อไปยังเซิร์ฟเวอร์ที่ระบุใน <code>?server=</code> แทน</p>
+    <h3>เล่นคนเดียวก็ยังได้</h3>
+    <p>ถ้าเปิดไฟล์ <code>public/index.html</code> ตรงๆ โดยไม่มีเซิร์ฟเวอร์ เกมจะขึ้นสถานะ "เล่นแบบออฟไลน์" และเล่นคนเดียวได้ตามปกติ — ระบบ multiplayer จะปิดเงียบไปเอง</p>
+    <h3>เชื่อมต่อหลุด</h3>
+    <p>ถ้าเน็ตหลุด เกมจะพยายามต่อใหม่อัตโนมัติทุก ~2.5 วินาที โดยไม่ต้องรีเฟรช</p>
+    <div class="warn">⚠️ ต้องใช้ <code>https</code> (และ <code>wss://</code>) เมื่อขึ้นออนไลน์จริง เบราว์เซอร์จะบล็อก <code>ws://</code> ที่ไม่เข้ารหัสบนหน้าเว็บ https — แพลตฟอร์มข้างบนให้ https มาอยู่แล้ว ไม่ต้องตั้งเพิ่ม</div>
+  </div>
+
+  <p class="foot">สร้างด้วย Claude · เซิร์ฟเวอร์ Node.js + WebSocket (ws) · รองrับผู้เล่นพร้อมกันหลายคนต่อโซน<br>
+  <span class="hl">ไม่ต้องเขียนโค้ดเพิ่ม</span> — แค่ deploy ตามขั้นตอน แล้วแจกลิงก์</p>
+</div>
+</body>
+</html>
