@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>English Quest — Stardew-style English Learning RPG</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Press+Start+2P&family=Fredoka:wght@400;500;600&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --ink:#2e2417;--muted:#7a6647;--card:#fff8e9;--line:#caa86a;--line-d:#a9804a;
+    --green:#5bb85b;--green-d:#2e7d32;--blue:#3a86d6;--blue-d:#1d5494;
+    --red:#e0594d;--red-d:#a83a30;--gold:#f4b836;--gold-d:#a9760e;--purple:#9a6cd0;--purple-d:#5f3a8e;
+    --wood:#a9764a;--wood-d:#7a5530;
+  }
+  html,body{height:100%;}
+  body{
+    font-family:'Fredoka',sans-serif;color:var(--ink);min-height:100vh;
+    background:radial-gradient(circle at 15% 10%,rgba(255,255,255,.35),transparent 45%),linear-gradient(170deg,#2a3d24,#16241a 70%);
+    display:flex;flex-direction:column;align-items:center;padding:12px;
+  }
+  h1{font-family:'Baloo 2';font-weight:800;font-size:24px;color:#ffe9a8;text-shadow:2px 2px 0 #5a3d04;text-align:center;}
+  .sub{font-size:12px;color:#cdbb90;margin-bottom:10px;text-align:center;}
+  .frame{width:100%;max-width:900px;}
+
+  /* HUD */
+  .hud{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;
+    background:var(--card);border:3px solid var(--line);border-radius:14px;padding:9px 13px;margin-bottom:9px;
+    box-shadow:0 5px 0 rgba(120,85,40,.5),inset 0 1px 0 #fffdf0;}
+  .controls{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  label.lbl{font-size:12px;color:var(--muted);font-weight:600;}
+  select,input[type=text]{font-family:inherit;font-size:13px;padding:6px 9px;border:2px solid var(--line);border-radius:9px;background:#fffdf6;color:var(--ink);outline:none;}
+  input[type=text]{width:110px;}select:focus,input:focus{border-color:var(--gold);}
+  .btn{font-family:'Baloo 2';font-weight:700;font-size:13px;cursor:pointer;border:none;padding:7px 13px;border-radius:11px;color:#fff;box-shadow:0 4px 0 rgba(0,0,0,.22);transition:transform .07s,filter .12s;}
+  .btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.22);}
+  .btn.green{background:var(--green);}.btn.blue{background:var(--blue);}.btn.gold{background:var(--gold);color:#5a3d04;}.btn.purple{background:var(--purple);}.btn.red{background:var(--red);}
+  .btn.sm{font-size:11px;padding:5px 9px;}
+  .stats{display:flex;gap:7px;align-items:center;font-weight:700;font-size:14px;flex-wrap:wrap;}
+  .pill{display:flex;align-items:center;gap:4px;background:#fff2cf;border:2px solid var(--line);border-radius:999px;padding:3px 9px;}
+  .lvlbar{display:flex;align-items:center;gap:6px;}
+  .xpwrap{width:90px;height:11px;background:#e0cfa0;border:2px solid var(--line-d);border-radius:6px;overflow:hidden;}
+  .xpfill{height:100%;background:linear-gradient(90deg,#7be37b,#3ea53e);width:0%;transition:width .3s;}
+
+  /* STAGE */
+  .stage{position:relative;background:#0e1810;border:5px solid #6f5a32;border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 0 0 2px #4a3a1e;}
+  .stage-inner{position:relative;width:100%;display:block;}
+  /* Fullscreen targets the inner wrapper so every absolutely-positioned HUD overlay
+     stays glued to the canvas. The wrapper is sized to the canvas's 22:14 aspect
+     ratio and centered on screen with position:fixed + inset:0 + margin:auto. */
+  .stage-inner:fullscreen,
+  .stage-inner:-webkit-full-screen{
+    width:min(100vw, calc(100vh * 22 / 14));
+    height:min(100vh, calc(100vw * 14 / 22));
+    position:fixed; inset:0; margin:auto;
+    background:#0e1810;
+  }
+  .stage-inner:fullscreen::backdrop,
+  .stage-inner:-webkit-full-screen::backdrop{background:#0a120c;}
+  .stage-inner:fullscreen canvas,
+  .stage-inner:-webkit-full-screen canvas{width:100%;height:100%;display:block;}
+  canvas#game{display:block;width:100%;image-rendering:pixelated;}
+  .zone-name{position:absolute;top:9px;left:50%;transform:translateX(-50%);background:rgba(20,14,5,.82);color:#ffe9b8;font-family:'Baloo 2';font-weight:700;font-size:14px;padding:4px 15px;border-radius:999px;pointer-events:none;letter-spacing:.5px;z-index:5;}
+  .energy-hud{position:absolute;top:8px;right:10px;display:flex;flex-direction:column;gap:4px;z-index:5;pointer-events:none;}
+  .ebar{width:120px;height:14px;background:rgba(20,14,5,.6);border:2px solid #2a1c0a;border-radius:8px;overflow:hidden;}
+  .efill{height:100%;width:100%;}
+  .efill.energy{background:linear-gradient(90deg,#ffd95e,#f5a623);}
+  .efill.hp{background:linear-gradient(90deg,#ff8a7a,#e0392b);}
+  .ebar-lbl{font-size:9px;color:#ffe9b8;font-family:'Press Start 2P';position:absolute;left:6px;top:3px;z-index:6;pointer-events:none;text-shadow:1px 1px 0 #000;}
+  #fsBtn{position:absolute;bottom:9px;right:10px;z-index:6;}
+  #hint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);background:rgba(20,14,5,.88);color:#fff;padding:8px 15px;border-radius:11px;font-size:13px;font-weight:500;text-align:center;pointer-events:none;max-width:80%;box-shadow:0 4px 14px rgba(0,0,0,.4);z-index:6;}
+  #toolbar{position:absolute;left:50%;bottom:9px;transform:translateX(-50%);display:flex;gap:5px;z-index:6;}
+  .slot{width:42px;height:42px;background:rgba(30,20,8,.72);border:2px solid #6f5a32;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:21px;position:relative;cursor:pointer;}
+  .slot.active{border-color:#ffd95e;box-shadow:0 0 0 2px rgba(255,217,94,.5);background:rgba(60,45,15,.8);}
+  .slot .k{position:absolute;top:-2px;left:2px;font-size:8px;color:#cdbb90;font-family:'Press Start 2P';}
+  #start-ov{position:absolute;inset:0;background:rgba(15,24,16,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;text-align:center;padding:22px;z-index:10;}
+  #start-ov h2{font-family:'Baloo 2';font-size:21px;color:#ffe9a8;}
+  #start-ov p{font-size:13px;max-width:360px;opacity:.92;line-height:1.6;}
+
+  .mobile-ctrl{display:none;gap:14px;justify-content:center;align-items:center;margin-top:9px;}
+  .dpad{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:4px;}
+  .dpad button{font-size:18px;border:none;border-radius:10px;background:var(--card);border:2px solid var(--line);color:var(--ink);box-shadow:0 3px 0 rgba(120,85,40,.5);}
+  .dpad button:active{transform:translateY(2px);}
+  .dpad .up{grid-column:2;grid-row:1;}.dpad .left{grid-column:1;grid-row:2;}.dpad .right{grid-column:3;grid-row:2;}.dpad .down{grid-column:2;grid-row:3;}
+  .actbtns{display:flex;flex-direction:column;gap:7px;}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 13px;justify-content:center;font-size:11px;color:#cdbb90;padding:9px 0 0;font-weight:500;}
+  .legend b{color:#ffe9a8;}
+
+  .panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:11px;margin-top:11px;}
+  .card{background:var(--card);border:3px solid var(--line);border-radius:14px;padding:12px 14px;box-shadow:0 5px 0 rgba(120,85,40,.45),inset 0 1px 0 #fffdf0;}
+  .card h2{font-family:'Baloo 2';font-weight:700;font-size:16px;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .row{display:flex;justify-content:space-between;padding:3px 0;font-size:13px;border-bottom:1px dashed var(--line);}
+  .row:last-child{border-bottom:none;}.row.me{color:var(--blue-d);font-weight:700;}
+  .rank{display:inline-flex;width:21px;height:21px;align-items:center;justify-content:center;border-radius:50%;font-size:11px;font-weight:700;margin-right:5px;background:#fff2cf;color:var(--gold-d);}
+  .rank.r1{background:var(--gold);color:#fff;}.rank.r2{background:#cdd3da;color:#fff;}.rank.r3{background:#e0a06a;color:#fff;}
+  .inv{display:flex;flex-wrap:wrap;gap:5px;}
+  .invchip{display:inline-flex;align-items:center;gap:3px;background:#fff;border:2px solid var(--line);border-radius:9px;padding:3px 8px;font-size:13px;font-weight:600;}
+  .invchip .ct{background:var(--wood);color:#fff;border-radius:6px;padding:0 5px;font-size:11px;}
+  .empty{color:var(--muted);font-size:12px;}
+
+  .craft-grid,.shop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;}
+  .recipe,.item{border:2px solid var(--line);border-radius:11px;padding:9px;background:#fffdf6;text-align:center;}
+  .recipe .emoji,.item .emoji{font-size:25px;}
+  .recipe .nm,.item .nm{font-size:13px;font-weight:600;margin:3px 0;}
+  .recipe .need{font-size:11px;color:var(--muted);margin-bottom:6px;min-height:28px;}
+  .item .price{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px;}
+  .recipe button,.item button{width:100%;font-size:11px;padding:5px;border-radius:9px;}
+  .recipe button:disabled{opacity:.45;cursor:not-allowed;}
+
+  /* character builder */
+  #dress{display:none;background:var(--card);border:3px solid var(--line);border-radius:14px;padding:13px;margin-bottom:9px;box-shadow:0 5px 0 rgba(120,85,40,.45);}
+  .dress-flex{display:flex;gap:15px;align-items:flex-start;flex-wrap:wrap;}
+  #preview{background:linear-gradient(160deg,#8fd0e8,#bfe08f 60%);border-radius:11px;border:3px solid #80a857;image-rendering:pixelated;}
+  .dress-opts{flex:1;min-width:250px;display:grid;gap:9px;}
+  .opt-label{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:4px;}
+  .optrow{display:flex;flex-wrap:wrap;gap:5px;}
+  .swatch{width:28px;height:28px;border-radius:50%;border:3px solid var(--line);cursor:pointer;transition:transform .1s;}
+  .swatch:hover{transform:scale(1.1);}.swatch.sel{border-color:var(--blue);box-shadow:0 0 0 3px #cfe0ff;}
+  .chip{font-family:inherit;padding:5px 10px;border:2px solid var(--line);border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;background:#fffdf6;color:var(--ink);}
+  .chip.sel{border-color:var(--blue);color:var(--blue-d);background:#eef4ff;}
+  .chip .dot{display:inline-block;width:10px;height:10px;border-radius:50%;vertical-align:-1px;margin-right:4px;}
+
+  /* modals */
+  .modal{display:none;position:fixed;inset:0;background:rgba(15,24,16,.6);z-index:60;align-items:center;justify-content:center;padding:16px;}
+  .modal-card{background:var(--card);border:4px solid var(--gold);border-radius:18px;padding:19px;width:min(440px,94%);box-shadow:0 16px 40px rgba(0,0,0,.45);}
+  #q-tag{font-size:11px;font-weight:700;color:var(--blue-d);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px;}
+  #q-text{font-family:'Baloo 2';font-weight:700;font-size:20px;margin-bottom:13px;}
+  #q-opts{display:grid;gap:8px;}
+  .opt-btn{font-family:inherit;font-size:15px;font-weight:600;padding:10px;border:2px solid var(--line);border-radius:11px;background:#fffdf6;color:var(--ink);cursor:pointer;text-align:left;transition:all .12s;}
+  .opt-btn:hover:not(:disabled){border-color:var(--gold);background:#fff7e3;}
+  .opt-btn:disabled{cursor:default;}
+  .opt-btn.right{border-color:var(--green);background:#e7f6e9;color:var(--green-d);}
+  .opt-btn.wrong{border-color:var(--red);background:#fbe9e7;color:var(--red-d);}
+  #q-feedback{margin-top:11px;font-size:13px;font-weight:600;min-height:18px;}
+
+  /* fishing minigame */
+  .fish-area{position:relative;height:220px;background:linear-gradient(180deg,#4aa3d8,#1d5e94);border-radius:12px;overflow:hidden;border:3px solid #16466e;}
+  .fish-track{position:absolute;right:14px;top:10px;bottom:10px;width:34px;background:rgba(10,30,50,.5);border-radius:17px;border:2px solid #0e3550;}
+  .fish-bar{position:absolute;right:16px;width:28px;background:linear-gradient(#7be37b,#3ea53e);border-radius:14px;opacity:.85;}
+  .fish-target{position:absolute;right:16px;width:28px;background:rgba(255,217,94,.55);border:2px solid #ffd95e;border-radius:8px;}
+  .fish-prog{position:absolute;left:14px;top:10px;bottom:10px;width:14px;background:rgba(10,30,50,.5);border-radius:8px;overflow:hidden;}
+  .fish-progfill{position:absolute;bottom:0;width:100%;background:linear-gradient(#ffd95e,#f5a623);height:0%;}
+  .fish-icon{position:absolute;right:18px;font-size:20px;}
+  .fish-hint{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);color:#fff;font-size:12px;font-weight:600;text-shadow:1px 1px 2px #000;text-align:center;width:90%;}
+
+  /* mine combat */
+  .mine-area{position:relative;height:200px;background:linear-gradient(180deg,#3a2f44,#1e1828);border-radius:12px;overflow:hidden;border:3px solid #120d1c;display:flex;align-items:center;justify-content:center;}
+  .monster{font-size:64px;transition:transform .1s;}
+  .mon-hpwrap{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:70%;height:14px;background:rgba(0,0,0,.5);border:2px solid #000;border-radius:7px;overflow:hidden;}
+  .mon-hpfill{height:100%;background:linear-gradient(90deg,#ff8a7a,#e0392b);width:100%;transition:width .2s;}
+  .rock{font-size:60px;}
+  .foot{text-align:center;font-size:11px;color:#cdbb90;margin-top:13px;line-height:1.6;}
+  .chat-line{padding:2px 0;border-bottom:1px dashed #efe3c4;}
+  .chat-line:last-child{border-bottom:none;}
+  .chat-line b{color:var(--blue-d);}
+  .chat-line.mine b{color:var(--green-d);}
+  .hl{color:#ffe9a8;font-weight:600;}
+</style>
+</head>
+<body>
+  <h1>⛏️ English Quest 🎣</h1>
+  <p class="sub">เกม RPG เรียนคำศัพท์สไตล์ Stardew · ตอบคำศัพท์ได้พลังงาน&เครื่องมือ → ตกปลา ขุดเหมือง สู้มอนสเตอร์ → คราฟต์ของรางวัล · ป.1–ป.6</p>
+
+  <div class="frame">
+    <div class="hud">
+      <div class="controls">
+        <label class="lbl">ชั้น</label>
+        <select id="grade"><option value="1">ป.1</option><option value="2">ป.2</option><option value="3">ป.3</option><option value="4">ป.4</option><option value="5">ป.5</option><option value="6">ป.6</option></select>
+        <input id="pname" type="text" placeholder="ชื่อผู้เล่น">
+        <button class="btn purple sm" id="dressbtn">🧍 สร้างตัวละคร</button>
+        <button class="btn green" id="join">▶ เริ่มเล่น</button>
+      </div>
+      <div class="stats">
+        <span class="lvlbar"><span class="pill">Lv.<b id="lvl">1</b></span><div class="xpwrap"><div class="xpfill" id="xpfill"></div></div></span>
+        <span class="pill">🪙<b id="coins">0</b></span>
+        <span class="pill">💎<b id="gems">0</b></span>
+        <span class="pill">👥<b id="playerCount">0</b></span>
+        <span id="netStatus" style="font-size:11px;font-weight:600;">ยังไม่ออนไลน์</span>
+      </div>
+    </div>
+
+    <div id="dress">
+      <div class="dress-flex">
+        <canvas id="preview" width="130" height="160"></canvas>
+        <div class="dress-opts">
+          <div><p class="opt-label">เพศ / รูปร่าง</p><div id="opt-body" class="optrow"></div></div>
+          <div><p class="opt-label">สีผิว</p><div id="opt-skin" class="optrow"></div></div>
+          <div><p class="opt-label">ทรงผม</p><div id="opt-hairstyle" class="optrow"></div></div>
+          <div><p class="opt-label">สีผม</p><div id="opt-haircolor" class="optrow"></div></div>
+          <div><p class="opt-label">สีเสื้อ</p><div id="opt-shirt" class="optrow"></div></div>
+          <div><p class="opt-label">สีกางเกง/กระโปรง</p><div id="opt-pants" class="optrow"></div></div>
+          <div><p class="opt-label">หมวก / ของประดับ</p><div id="opt-hat" class="optrow"></div></div>
+          <button class="btn blue sm" id="dressdone" style="justify-self:start;">✓ เสร็จแล้ว</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage" id="stage">
+     <div class="stage-inner" id="stageInner">
+      <canvas id="game" width="704" height="448"></canvas>
+      <div class="zone-name" id="zoneName">ฟาร์มหน้าโรงเรียน</div>
+      <div class="energy-hud">
+        <div style="position:relative;"><div class="ebar-lbl">ENERGY</div><div class="ebar"><div class="efill energy" id="energyFill"></div></div></div>
+        <div style="position:relative;"><div class="ebar-lbl">HP</div><div class="ebar"><div class="efill hp" id="hpFill"></div></div></div>
+      </div>
+      <div id="toolbar"></div>
+      <button class="btn gold sm" id="fsBtn">⛶ เต็มจอ</button>
+      <div id="hint" style="display:none;"></div>
+      <div id="start-ov">
+        <h2>🌾 ยินดีต้อนรับสู่ English Quest!</h2>
+        <p>เลือกชั้นเรียน ตั้งชื่อ และสร้างตัวละคร (ชาย/หญิง + ทรงผม) จากนั้นกด “เริ่มเล่น”<br><br>เดินสำรวจ 4 โซน: ฟาร์ม 🌾 → ห้องเรียน 📚 → ท่าน้ำตกปลา 🎣 → เหมืองแร่ ⛏️<br><br>ตอบคำศัพท์ถูกเพื่อรับ <b>พลังงาน วัตถุดิบ และเครื่องมือ</b> แล้วนำไปตกปลา/ขุดแร่/คราฟต์ของรางวัล!</p>
+      </div>
+     </div>
+    </div>
+
+    <div class="mobile-ctrl">
+      <div class="dpad">
+        <button class="up" data-dir="up">▲</button><button class="left" data-dir="left">◀</button>
+        <button class="right" data-dir="right">▶</button><button class="down" data-dir="down">▼</button>
+      </div>
+      <div class="actbtns">
+        <button class="btn gold" data-key=" ">⚡ ใช้/คุย</button>
+        <button class="btn blue sm" data-key="1">1</button>
+        <button class="btn blue sm" data-key="2">2</button>
+        <button class="btn blue sm" data-key="3">3</button>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span>⌨️ <b>ลูกศร/WASD</b> เดิน</span>
+      <span><b>SPACE / E</b> ใช้เครื่องมือ・คุย</span>
+      <span><b>1·2·3</b> สลับเครื่องมือ</span>
+      <span>🚪 เหยียบประตูข้ามโซน</span>
+      <span><b>F</b> เต็มจอ</span>
+    </div>
+
+    <div class="panels">
+      <div class="card"><h2>🎒 กระเป๋า (วัตถุดิบ)</h2><div id="bag" class="inv"><span class="empty">ยังไม่มีของ</span></div></div>
+      <div class="card"><h2>🏆 Scoreboard</h2><div id="board"></div></div>
+      <div class="card">
+        <h2>💬 แชทในแมพ <span style="font-family:'Fredoka';font-weight:400;font-size:11px;color:var(--muted);">(เห็นเฉพาะคนในโซนเดียวกัน)</span></h2>
+        <div id="chatLog" style="height:90px;overflow-y:auto;font-size:13px;background:#fffdf6;border:2px solid var(--line);border-radius:9px;padding:6px 9px;margin-bottom:7px;"></div>
+        <div style="display:flex;gap:6px;">
+          <input id="chatInput" type="text" maxlength="80" placeholder="พิมพ์ข้อความ…" style="flex:1;font-size:13px;padding:6px 9px;border:2px solid var(--line);border-radius:9px;">
+          <button class="btn blue sm" id="chatSend">ส่ง</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:11px;">
+      <h2>🔨 โต๊ะคราฟต์ของรางวัล <span style="font-family:'Fredoka';font-weight:400;font-size:11px;color:var(--muted);">(ต้องมีวัตถุดิบครบ + เลเวลถึง)</span></h2>
+      <div id="craft" class="craft-grid"></div>
+    </div>
+
+    <div class="card" style="margin-top:11px;">
+      <h2>🎁 ตลาดนัดของรางวัลโรงเรียน <span id="wordcount" style="font-family:'Fredoka';font-weight:400;font-size:11px;color:var(--muted);"></span></h2>
+      <div id="shop" class="shop-grid"></div>
+    </div>
+
+    <p class="foot">สร้างด้วย Claude · เปิดในเบราว์เซอร์ไหนก็เล่นได้ ไม่ต้องต่อเน็ต<br>
+    <span class="hl">ของรางวัลหายากต้องคราฟต์</span> จากปลาหายาก+แร่+เพชร ที่ได้จากการตอบคำศัพท์และเล่นมินิเกม — ไม่ได้มาง่ายๆ!</p>
+  </div>
+
+  <!-- QUIZ MODAL -->
+  <div id="quizbox" class="modal"><div class="modal-card">
+    <p id="q-tag"></p><p id="q-text"></p><div id="q-opts"></div><p id="q-feedback"></p>
+  </div></div>
+
+  <!-- FISHING MODAL -->
+  <div id="fishbox" class="modal"><div class="modal-card" style="border-color:#3a86d6;">
+    <p style="font-family:'Baloo 2';font-weight:700;font-size:18px;margin-bottom:8px;">🎣 ตกปลา!</p>
+    <div class="fish-area" id="fishArea">
+      <div class="fish-prog"><div class="fish-progfill" id="fishProg"></div></div>
+      <div class="fish-track"></div>
+      <div class="fish-target" id="fishTarget"></div>
+      <div class="fish-bar" id="fishBar"></div>
+      <div class="fish-icon" id="fishIcon">🐟</div>
+      <div class="fish-hint">กด/ค้าง <b>SPACE</b> หรือปุ่มด้านล่าง ให้แถบเหลืองคร่อมปลาไว้จนเต็มหลอดซ้าย!</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:11px;justify-content:center;">
+      <button class="btn blue" id="fishReel" style="flex:1;">⬆ ดึงเบ็ด (ค้างไว้)</button>
+      <button class="btn red sm" id="fishQuit">เลิก</button>
+    </div>
+  </div></div>
+
+  <!-- MINE / COMBAT MODAL -->
+  <div id="minebox" class="modal"><div class="modal-card" style="border-color:#9a6cd0;">
+    <p id="mineTitle" style="font-family:'Baloo 2';font-weight:700;font-size:18px;margin-bottom:8px;">⛏️ เหมืองแร่</p>
+    <div class="mine-area" id="mineArea">
+      <div class="mon-hpwrap" id="monHpWrap" style="display:none;"><div class="mon-hpfill" id="monHpFill"></div></div>
+      <div id="mineTarget" class="rock">🪨</div>
+    </div>
+    <p id="mineMsg" style="text-align:center;font-size:13px;font-weight:600;margin-top:9px;min-height:18px;"></p>
+    <div style="display:flex;gap:8px;margin-top:9px;justify-content:center;">
+      <button class="btn purple" id="mineHit" style="flex:1;">⚔️ โจมตี / ขุด (ตอบคำศัพท์)</button>
+      <button class="btn red sm" id="mineQuit">ออก</button>
+    </div>
+  </div></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ WORD BANK ============ */
+  const W={
+    1:[["แมว = ?",["Cat","Dog","Cow"],0],["หมา = ?",["Dog","Fish","Bird"],0],["นก = ?",["Bird","Cat","Pig"],0],["ปลา = ?",["Fish","Frog","Fox"],0],["หมู = ?",["Pig","Hen","Duck"],0],["เป็ด = ?",["Duck","Dog","Deer"],0],["วัว = ?",["Cow","Cat","Cub"],0],["ม้า = ?",["Horse","House","Mouse"],0],["สีแดง = ?",["Red","Blue","Green"],0],["สีน้ำเงิน = ?",["Blue","Black","Brown"],0],["สีเขียว = ?",["Green","Grey","Gold"],0],["สีเหลือง = ?",["Yellow","White","Pink"],0],["เลข 1 = ?",["One","Two","Ten"],0],["เลข 2 = ?",["Two","Three","Four"],0],["เลข 3 = ?",["Three","Six","Five"],0],["เลข 5 = ?",["Five","Nine","Four"],0],["Apple = ?",["กล้วย","แอปเปิล","ส้ม"],1],["Banana = ?",["กล้วย","องุ่น","มะม่วง"],0],["Sun = ?",["ดวงจันทร์","ดวงอาทิตย์","ดาว"],1],["Moon = ?",["ดวงจันทร์","ดวงอาทิตย์","เมฆ"],0],["Star = ?",["ดาว","ฟ้า","ฝน"],0],["Egg = ?",["ไข่","นม","ขนมปัง"],0],["Milk = ?",["น้ำ","นม","ชา"],1],["Hand = ?",["มือ","เท้า","ตา"],0],["Eye = ?",["ตา","หู","จมูก"],0],["Ear = ?",["หู","ปาก","มือ"],0],["Foot = ?",["เท้า","แขน","ขา"],0],["Book = ?",["หนังสือ","ปากกา","กระเป๋า"],0],["Pen = ?",["ดินสอ","ปากกา","ยางลบ"],1],["Bag = ?",["กระเป๋า","หมวก","รองเท้า"],0]],
+    2:[["ครู = ?",["Doctor","Teacher","Farmer"],1],["หมอ = ?",["Doctor","Nurse","Driver"],0],["ชาวนา = ?",["Farmer","Fisher","Baker"],0],["ตำรวจ = ?",["Police","Pilot","Painter"],0],["Monday = ?",["จันทร์","อังคาร","ศุกร์"],0],["Sunday = ?",["อาทิตย์","เสาร์","พุธ"],0],["Friday = ?",["ศุกร์","พฤหัส","จันทร์"],0],["Big ↔ ?",["Small","Tall","Hot"],0],["Hot ↔ ?",["Cold","Wet","Old"],0],["Up ↔ ?",["Down","Out","In"],0],["Fast ↔ ?",["Slow","Long","Soft"],0],["School = ?",["บ้าน","โรงเรียน","วัด"],1],["House = ?",["บ้าน","ตลาด","สวน"],0],["Water = ?",["ไฟ","น้ำ","ลม"],1],["Fire = ?",["ไฟ","น้ำ","ดิน"],0],["Happy = ?",["เศร้า","มีความสุข","โกรธ"],1],["Sad = ?",["เศร้า","ดีใจ","กลัว"],0],["Tree = ?",["ต้นไม้","ดอกไม้","หญ้า"],0],["Flower = ?",["ต้นไม้","ดอกไม้","ใบไม้"],1],["Rice = ?",["ข้าว","ขนม","นม"],0],["Chicken = ?",["ไก่","หมู","ปลา"],0],["Head = ?",["หัว","มือ","ขา"],0],["'I ___ a boy.'",["am","is","are"],0],["'You ___ happy.'",["am","are","is"],1],["'It ___ a cat.'",["am","are","is"],2],["One, two, ___",["three","tree","free"],0],["Mother = ?",["แม่","พ่อ","พี่"],0],["Father = ?",["แม่","พ่อ","น้อง"],1],["Brother = ?",["พี่/น้องชาย","พี่/น้องสาว","ปู่"],0],["Sister = ?",["พี่/น้องชาย","พี่/น้องสาว","ย่า"],1]],
+    3:[["Elephant = ?",["ม้า","ช้าง","เสือ"],1],["Tiger = ?",["เสือ","สิงโต","หมี"],0],["Lion = ?",["เสือ","สิงโต","ลิง"],1],["Monkey = ?",["ลิง","หมี","กระต่าย"],0],["Rabbit = ?",["กระต่าย","แมว","หนู"],0],["'I ___ a student.'",["am","is","are"],0],["'She ___ tall.'",["am","are","is"],2],["'They ___ friends.'",["is","are","am"],1],["Rainy = ?",["แดดออก","ฝนตก","หิมะ"],1],["Sunny = ?",["แดดออก","ฝนตก","มีลม"],0],["Cloudy = ?",["มีเมฆ","ฝนตก","ร้อน"],0],["Windy = ?",["มีลม","มีฝน","มีหิมะ"],0],["Breakfast = ?",["มื้อเช้า","มื้อเที่ยง","มื้อเย็น"],0],["Lunch = ?",["มื้อเช้า","มื้อเที่ยง","มื้อเย็น"],1],["Dinner = ?",["มื้อเช้า","มื้อเที่ยง","มื้อเย็น"],2],["Open ↔ ?",["Close","Clean","Cold"],0],["Clean ↔ ?",["Dirty","Dry","Dark"],0],["Day ↔ ?",["Night","Noon","Week"],0],["Kitchen = ?",["ห้องนอน","ห้องครัว","ห้องน้ำ"],1],["Bedroom = ?",["ห้องนอน","ห้องครัว","ห้องนั่งเล่น"],0],["Bathroom = ?",["ห้องน้ำ","ห้องครัว","โรงรถ"],0],["Red + Blue = ?",["Purple","Orange","Pink"],0],["Number 10 = ?",["Ten","Twelve","Twenty"],0],["Number 20 = ?",["Twelve","Twenty","Two"],1],["Teacher teaches at ___",["hospital","school","bank"],1],["Doctor works at ___",["hospital","farm","shop"],0],["Apple is a ___",["fruit","animal","color"],0],["Dog is an ___",["fruit","animal","insect"],1],["Monday before ___",["Sunday","Tuesday","Friday"],1],["Plural of 'cat'?",["cat","cats","cates"],1]],
+    4:[["'She ___ to school.'",["go","goes","going"],1],["'He ___ football.'",["play","plays","playing"],1],["'We ___ TV now.'",["watch","watches","are watching"],2],["Comparative of 'good'?",["gooder","better","best"],1],["Comparative of 'big'?",["bigger","biger","more big"],0],["Comparative of 'happy'?",["happier","happyer","more happy"],0],["Superlative of 'tall'?",["taller","tallest","most tall"],1],["Hospital = ?",["โรงพยาบาล","ธนาคาร","ไปรษณีย์"],0],["Bank = ?",["โรงพยาบาล","ธนาคาร","ตลาด"],1],["Library = ?",["ห้องสมุด","สวนสาธารณะ","พิพิธภัณฑ์"],0],["Market = ?",["ตลาด","สนามบิน","สถานี"],0],["Past of 'eat'?",["eated","ate","eaten"],1],["Past of 'go'?",["goed","went","gone"],1],["Past of 'see'?",["seed","saw","seen"],1],["Past of 'run'?",["runned","ran","run"],1],["Beautiful = ?",["น่าเกลียด","สวยงาม","น่ากลัว"],1],["Difficult = ?",["ง่าย","ยาก","สนุก"],1],["Easy ↔ ?",["Hard","Soft","Long"],0],["'There ___ two books.'",["is","are","am"],1],["'There ___ a pen.'",["is","are","be"],0],["'How ___ apples?'",["much","many","more"],1],["'How ___ water?'",["much","many","some"],0],["Storm = ?",["พายุ","สายรุ้ง","น้ำค้าง"],0],["Summer = ?",["ฤดูร้อน","ฤดูหนาว","ฤดูฝน"],0],["Winter = ?",["ฤดูร้อน","ฤดูหนาว","ฤดูใบไม้ผลิ"],1],["Adverb of 'quick'?",["quick","quickly","quicker"],1],["'I am ___ than you.'",["tall","taller","tallest"],1],["Opp of 'expensive'?",["cheap","costly","rich"],0],["Vegetable example?",["carrot","tiger","table"],0],["'She has ___ apple.'",["a","an","the"],1]],
+    5:[["Plural of 'child'?",["childs","children","childes"],1],["Plural of 'foot'?",["foots","feet","feets"],1],["Plural of 'tooth'?",["tooths","teeth","toothes"],1],["Plural of 'mouse'?",["mouses","mice","mouse"],1],["'If it rains, I ___ stay.'",["will","am","was"],0],["'If I study, I ___ pass.'",["will","would","were"],0],["Synonym of 'happy'?",["sad","joyful","angry"],1],["Synonym of 'big'?",["huge","tiny","slow"],0],["Synonym of 'fast'?",["quick","late","weak"],0],["Antonym of 'begin'?",["start","end","open"],1],["Antonym of 'buy'?",["sell","pay","get"],0],["Past of 'buy'?",["buyed","bought","buys"],1],["Past of 'teach'?",["teached","taught","teaches"],1],["Past of 'bring'?",["bringed","brought","brang"],1],["Environment = ?",["สิ่งแวดล้อม","เศรษฐกิจ","วัฒนธรรม"],0],["Culture = ?",["สิ่งแวดล้อม","วัฒนธรรม","การเมือง"],1],["'He has ___ homework.'",["finish","finished","finishing"],1],["'They have ___ lunch.'",["eat","eaten","ate"],1],["Perfect marker?",["yesterday","already","tomorrow"],1],["'I ___ never been there.'",["have","has","had"],0],["'She ___ a doctor.'",["work as","works as","working"],1],["Adverb of 'careful'?",["careful","carefully","carefuly"],1],["Pollution = ?",["มลพิษ","การจราจร","พลังงาน"],0],["Energy = ?",["พลังงาน","มลพิษ","น้ำ"],0],["'Neither A ___ B.'",["or","nor","and"],1],["'Both A ___ B.'",["and","or","nor"],0],["Comparative of 'little'?",["littler","less","lesser"],1],["Superlative of 'good'?",["gooder","better","best"],2],["'A lot ___ people.'",["of","off","on"],0],["Order: 'a ___ red car'",["big","reds","cars"],0]],
+    6:[["Passive: 'The cake ___ eaten.'",["was","did","has"],0],["Passive: 'Books ___ sold here.'",["is","are","was"],1],["Passive: 'It ___ made here.'",["is","are","do"],0],["Antonym of 'ancient'?",["old","modern","past"],1],["Antonym of 'increase'?",["rise","decrease","grow"],1],["Antonym of 'accept'?",["agree","reject","allow"],1],["'I've lived here ___ 2010.'",["since","for","ago"],0],["'I've waited ___ an hour.'",["since","for","at"],1],["Superlative of 'far'?",["farer","farthest","more far"],1],["Comparative of 'far'?",["farer","farther","fars"],1],["Knowledge = ?",["ความรู้","ความกลัว","ความสุข"],0],["Wisdom = ?",["ปัญญา","ความโกรธ","ความเศร้า"],0],["Reported: He said he ___ tired.",["is","was","are"],1],["Reported: She said she ___ busy.",["is","was","were"],1],["'If I were rich, I ___ travel.'",["will","would","am"],1],["'I wish I ___ taller.'",["am","was","were"],2],["Relative: 'The man ___ called.'",["who","which","what"],0],["Relative: 'The book ___ I read.'",["who","which","whose"],1],["Achievement = ?",["ความสำเร็จ","ความล้มเหลว","ความพยายาม"],0],["Failure ↔ ?",["success","loss","fall"],0],["'Hardly ___ I arrived...'",["did","had","have"],1],["'Not only... but ___'",["also","too","either"],0],["Gerund: 'I enjoy ___.'",["read","reading","to read"],1],["Infinitive: 'I want ___.'",["go","going","to go"],2],["Synonym of 'huge'?",["enormous","tiny","narrow"],0],["Synonym of 'rapid'?",["slow","swift","calm"],1],["Modal: 'You ___ wear a helmet.'",["can","must","may"],1],["Contrast conjunction?",["because","although","so"],1],["Pollution causes ___ warming.",["global","local","total"],0],["'The more you study, the ___ you know.'",["much","more","most"],1]]
+  };
+  Object.keys(W).forEach(g=>W[g]=W[g].map(x=>({q:x[0],o:x[1],a:x[2]})));
+  const totalWords=Object.values(W).reduce((s,a)=>s+a.length,0);
+
+  /* ============ ITEMS / CRAFT / SHOP ============ */
+  // materials icons
+  const MAT={wood:"🪵",fiber:"🌿",stone:"🪨",copper:"🟤",iron:"⚙️",gold_ore:"🟡",gem:"💎",fish_c:"🐟",fish_r:"🐠",fish_l:"🦈",pearl:"🫧",essence:"✨"};
+  const MATNAME={wood:"ไม้",fiber:"เส้นใย",stone:"หิน",copper:"ทองแดง",iron:"เหล็ก",gold_ore:"แร่ทอง",gem:"อัญมณี",fish_c:"ปลาธรรมดา",fish_r:"ปลาหายาก",fish_l:"ปลาตำนาน",pearl:"ไข่มุก",essence:"แก่นเวท"};
+
+  // Crafting recipes -> rewards (hard to get). need: {mat:count}, lvl: minLevel
+  const RECIPES=[
+    {id:"medal_bronze",nm:"เหรียญทองแดง",e:"🥉",need:{copper:3,wood:2},lvl:2,coins:0},
+    {id:"medal_silver",nm:"เหรียญเงิน",e:"🥈",need:{iron:3,stone:5,fish_c:2},lvl:4,coins:0},
+    {id:"medal_gold",nm:"เหรียญทอง",e:"🥇",need:{gold_ore:3,iron:2,fish_r:1},lvl:6,coins:0},
+    {id:"trophy",nm:"ถ้วยรางวัลโรงเรียน",e:"🏆",need:{gold_ore:5,gem:2,fish_r:2,essence:1},lvl:8,coins:0},
+    {id:"crown",nm:"มงกุฎนักเรียนดีเด่น",e:"👑",need:{gold_ore:6,gem:4,pearl:2,fish_l:1},lvl:10,coins:0},
+    {id:"book_legend",nm:"ตำราคำศัพท์ในตำนาน",e:"📜",need:{essence:3,gem:3,fish_l:1,iron:4},lvl:12,coins:0},
+    {id:"rod_pro",nm:"คันเบ็ดระดับโปร (เครื่องมือ)",e:"🎣",need:{iron:4,fiber:5,wood:3},lvl:3,coins:0,tool:"rod2"},
+    {id:"pick_pro",nm:"พลั่วเหล็กกล้า (เครื่องมือ)",e:"⛏️",need:{iron:5,gold_ore:1,wood:3},lvl:5,coins:0,tool:"pick2"},
+  ];
+  // simple coin shop (small rewards)
+  const SHOP=[{n:"ดินสอ + ยางลบ",e:"✏️",c:30},{n:"สมุดโน้ต",e:"📓",c:60},{n:"สติกเกอร์ชุด",e:"✨",c:50},{n:"ปากกาสี",e:"🖍️",c:80},{n:"กระติกน้ำ",e:"🥤",c:120},{n:"กล่องดินสอ",e:"🧰",c:150}];
+
+  /* ============ CHARACTER LOOK ============ */
+  const BODY=[{id:"boy",n:"ชาย"},{id:"girl",n:"หญิง"}];
+  const SKIN=["#f6c89a","#e8b27e","#c68642","#8d5524","#ffe0bd"];
+  const HAIRSTYLE=[{id:"short",n:"สั้น"},{id:"bob",n:"บ๊อบ"},{id:"long",n:"ยาว"},{id:"pony",n:"หางม้า"},{id:"twin",n:"แกละ"},{id:"spiky",n:"ตั้ง"},{id:"buzz",n:"เกรียน"}];
+  const HAIRCOLOR=["#2b1d0e","#111","#d4a017","#7a3b1d","#888","#e0599a","#5a3b8a","#c0392b"];
+  const SHIRT=["#3a86d6","#e0594d","#5bb85b","#9a6cd0","#e6862a","#16a085","#d63384","#f4b836"];
+  const PANTS=["#3a4a63","#5a3b1d","#2e2e2e","#4a6741","#6b4a8a","#8a3b5a"];
+  const HAT=[{id:"none",n:"ไม่ใส่"},{id:"cap",n:"หมวกแก๊ป"},{id:"straw",n:"งอบฟาง"},{id:"bow",n:"โบว์"},{id:"crown",n:"มงกุฎ"},{id:"band",n:"ที่คาดผม"},{id:"flower",n:"ดอกไม้"}];
+  let look={body:0,skin:0,hairstyle:0,haircolor:0,shirt:0,pants:0,hat:0};
+
+  /* ============ MAPS ============ */
+  const TILE=32;
+  const VIEW_W=704, VIEW_H=448;
+  const L={'.':0,'#':1,'T':2,'~':3,'=':4,'W':5,'R':6,'D':7,'7':7,'f':8,'b':9,'d':10,'F':11,'M':12,'K':13,'B':14,'S':15,'s':16,'P':17,'c':18,'o':19,'_':20,'r':21};
+  // 0 grass,1 brick,2 tree,3 water-deep,4 fence,5 wall,6 roof,7 door,8 flower,9 bench,10 dirt,11 floor,12 indoor wall,13 desk,14 chalkboard,15 stall,16 sand,17 plowed soil,18 crop,19 dock(wood plank),20 shallow water,21 ore rock
+  function parse(rows){return rows.map(r=>r.split('').map(c=>L[c]??0));}
+
+  const map1=parse([ // farm/front (22x14) — building door reachable, all doors aligned
+    "TTTTTTTTTT77TTTTTTTTTT",
+    "T..ffff.....RRRR....fT",
+    "T..PPPP.....RRRR....bT",
+    "T..PccP.....WWWW.....T",
+    "T..PccP.....W..W.....T",
+    "T..PPPP.....W77W.....T",
+    "T...........=..=.....T",
+    "T..==..bb............T",
+    "T..............bb...fT",
+    "Tb..ffff.............T",
+    "T....................T",
+    "T..fff......TT...fff.T",
+    "T...........TT.......T",
+    "TTTTTTTTTT77TTTTTTTTTT"
+  ]);
+  const map2=parse([ // classroom (22x12) — wooden floor, desk rows, chalkboard
+    "MMMMMMMMMMMMMMMMMMMMMM",
+    "MFFBBBBBBBBBBBBBBBBFFM",
+    "MFFFFFFFFFFFFFFFFFFFFM",
+    "MFFKFFKFFKFFKFFKFFKFFM",
+    "MFFFFFFFFFFFFFFFFFFFFM",
+    "MFFKFFKFFKFFKFFKFFKFFM",
+    "MFFFFFFFFFFFFFFFFFFFFM",
+    "MFFKFFKFFKFFKFFKFFKFFM",
+    "MFFFFFFFFFFFFFFFFFFFFM",
+    "MFFKFFKFFKFFKFFKFFKFFM",
+    "MFFFFFFFFFFFFFFFFFFFFM",
+    "MMMMMMMMMM77MMMMMMMMMM"
+  ]);
+  const map3=parse([ // fishing dock (22x14) — plank ring walkable, water inside
+    "TTTTTTTTTT77TTTTTTTTTT",
+    "T.ffff..........fff..T",
+    "T....bb.....bb.......T",
+    "T..oooooooooooooooo..T",
+    "T..o~~~~~~~~~~~~~~o..T",
+    "T..o~~~~~~~~~~~~~~o..T",
+    "T..o~~~~~~~~~~~~~~o..T",
+    "T..o~~~~~~~~~~~~~~o..T",
+    "T..o~~~~~~~~~~~~~~o..T",
+    "T..o~~~~~~~~~~~~~~o..T",
+    "T..o~~~~~~~~~~~~~~o..T",
+    "T..oooooooooooooooo..T",
+    "T.ffff.....bb....ff..T",
+    "TTTTTTTTTTTTTTTTTTTTTT"
+  ]);
+  const map4=parse([ // mine (22x14)
+    "MMMMMMMMMM77MMMMMMMMMM",
+    "M..................r.M",
+    "M.r...rr....r.....rr.M",
+    "M........dd..........M",
+    "M..rr....dd....r.....M",
+    "M........dd........r.M",
+    "M.r......dd..rr......M",
+    "M........dd..........M",
+    "M..r..rr.dd......r...M",
+    "M........dd..r.......M",
+    "M.rr.....dd.......rr.M",
+    "M....r...dd..r.......M",
+    "M.r......dd........r.M",
+    "MMMMMMMMMMMMMMMMMMMMMM"
+  ]);
+
+  const MAPS={
+    farm:{name:"ฟาร์มหน้าโรงเรียน",grid:map1,spawn:{x:10,y:8}},
+    classroom:{name:"ห้องเรียน",grid:map2,spawn:{x:10,y:10}},
+    dock:{name:"ท่าน้ำตกปลา",grid:map3,spawn:{x:10,y:2}},
+    mine:{name:"เหมืองแร่",grid:map4,spawn:{x:10,y:2}}
+  };
+
+  // Single clean door function (trigger tile -> destination map + spawn)
+  function doorAt(mapKey,tx,ty){
+    if(mapKey==="farm"){
+      if(ty<=0 && (tx===10||tx===11)) return {map:"mine",x:10,y:2};
+      if(ty>=13 && (tx===10||tx===11)) return {map:"dock",x:10,y:2};
+      if(ty===5 && (tx===13||tx===14)) return {map:"classroom",x:10,y:10};
+    }
+    if(mapKey==="classroom"){ if(ty>=11 && (tx===10||tx===11)) return {map:"farm",x:13,y:7}; }
+    if(mapKey==="dock"){ if(ty<=0 && (tx===10||tx===11)) return {map:"farm",x:10,y:12}; }
+    if(mapKey==="mine"){ if(ty<=0 && (tx===10||tx===11)) return {map:"farm",x:10,y:2}; }
+    return null;
+  }
+
+  function solid(code){ return [2,3,4,5,6,12,13,14,15,21].includes(code); }
+  // fishing tiles: deep(3) or shallow(20) water on the dock
+  function isFishTile(mapKey,code){ return mapKey==="dock" && (code===3||code===20); }
+
+  /* ============ NODES (quiz spots that aren't tied to actions) ============ */
+  // On the farm & classroom we put ❓ nodes that give materials/energy when answered.
+  const QUESTS={
+    farm:[{x:4,y:3,k:"crop"},{x:5,y:3,k:"crop"},{x:4,y:4,k:"crop"},{x:5,y:4,k:"crop"},{x:17,y:9,k:"q"},{x:3,y:12,k:"q"},{x:18,y:8,k:"q"}],
+    classroom:[{x:5,y:4,k:"q"},{x:11,y:4,k:"q"},{x:17,y:4,k:"q"},{x:8,y:8,k:"q"},{x:14,y:8,k:"q"}],
+  };
+  let questState={};
+  function buildQuests(){questState={};Object.keys(QUESTS).forEach(m=>questState[m]=QUESTS[m].map(q=>({...q,done:false})));}
+  buildQuests();
+
+  /* ============ PLAYER STATE ============ */
+  const cv=document.getElementById('game'), cx=cv.getContext('2d'); cx.imageSmoothingEnabled=false;
+  const pv=document.getElementById('preview'), px=pv.getContext('2d'); px.imageSmoothingEnabled=false;
+
+  const TOOLS=[{id:"rod",e:"🎣",nm:"คันเบ็ด"},{id:"pick",e:"⛏️",nm:"พลั่ว"},{id:"hand",e:"✋",nm:"มือ"}];
+  let player={
+    map:"farm", px:MAPS.farm.spawn.x*TILE, py:MAPS.farm.spawn.y*TILE,
+    dir:"down", moving:false, frame:0, frameTimer:0,
+    grade:1, name:"", coins:0, gems:0,
+    lvl:1, xp:0, xpNext:50,
+    energy:100, energyMax:100, hp:100, hpMax:100,
+    bag:{}, tools:{rod:1,pick:1}, activeTool:0
+  };
+  let joined=false, animClock=0;
+  const board=[{name:"น้องเอ",score:14},{name:"น้องบี",score:11},{name:"น้องซี",score:8},{name:"น้องดี",score:5}];
+
+  /* ============ INPUT ============ */
+  const keys={};
+  function typingInField(){
+    const el=document.activeElement;
+    return el && (el.tagName==='INPUT' || el.tagName==='SELECT' || el.tagName==='TEXTAREA');
+  }
+  window.addEventListener('keydown',e=>{
+    if(typingInField())return; // let the user type their name freely
+    const k=e.key.toLowerCase();
+    if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d',' '].includes(k))e.preventDefault();
+    keys[k]=true;
+    if(k==='1')setTool(0); if(k==='2')setTool(1); if(k==='3')setTool(2);
+    if(k==='f')toggleFS();
+    if(k===' '||k==='e'){ if(!fishing) doAction(); }
+  });
+  window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+  document.querySelectorAll('.dpad button').forEach(b=>{
+    const dir=b.dataset.dir;const m={up:'arrowup',down:'arrowdown',left:'arrowleft',right:'arrowright'}[dir];
+    const on=e=>{e.preventDefault();keys[m]=true;};const off=e=>{e.preventDefault();keys[m]=false;};
+    b.addEventListener('touchstart',on);b.addEventListener('touchend',off);b.addEventListener('mousedown',on);b.addEventListener('mouseup',off);b.addEventListener('mouseleave',off);
+  });
+  document.querySelectorAll('[data-key]').forEach(b=>{
+    b.addEventListener('click',e=>{e.preventDefault();const k=b.dataset.key;if(k==='1')setTool(0);else if(k==='2')setTool(1);else if(k==='3')setTool(2);else doAction();});
+  });
+
+  /* ============ TILE RENDER (detailed) ============ */
+  function rnd(x,y){return ((Math.sin(x*127.1+y*311.7)*43758.5453)%1+1)%1;}
+  function drawTile(code,sx,sy,gx,gy){
+    switch(code){
+      case 0: { // grass detailed
+        cx.fillStyle="#6fbf4f";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#67b347";cx.fillRect(sx,sy,TILE,16);
+        cx.fillStyle="#79c95a";for(let i=0;i<5;i++){const r=rnd(gx*9+i,gy*7);cx.fillRect(sx+(r*28|0),sy+((rnd(i,gy)*28)|0),2,5);}
+        if(rnd(gx,gy)>0.85){cx.fillStyle="#e85d75";cx.fillRect(sx+14,sy+12,3,3);cx.fillStyle="#f4c430";cx.fillRect(sx+15,sy+13,1,1);}
+        break;}
+      case 8: { drawTile(0,sx,sy,gx,gy);
+        const fc=["#e85d75","#f4c430","#fff","#d65ad6","#ff9a3d"][(gx+gy)%5];
+        cx.fillStyle="#3a8a3a";cx.fillRect(sx+15,sy+16,2,8);
+        cx.fillStyle=fc;cx.fillRect(sx+12,sy+10,4,4);cx.fillRect(sx+8,sy+13,4,4);cx.fillRect(sx+16,sy+13,4,4);cx.fillRect(sx+12,sy+8,4,4);cx.fillRect(sx+12,sy+15,4,4);
+        cx.fillStyle="#f4c430";cx.fillRect(sx+13,sy+12,3,3);break;}
+      case 1: { // brick
+        cx.fillStyle="#cda36b";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#b8915a";cx.fillRect(sx,sy,TILE,2);cx.fillRect(sx,sy+11,TILE,2);cx.fillRect(sx,sy+22,TILE,2);
+        cx.fillStyle="#c4995f";cx.fillRect(sx+10,sy,2,11);cx.fillRect(sx+22,sy+11,2,11);cx.fillRect(sx+6,sy+22,2,10);
+        break;}
+      case 10:{ cx.fillStyle="#a9805a";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#9c734f";for(let i=0;i<5;i++)cx.fillRect(sx+((rnd(gx+i,gy)*28)|0),sy+((rnd(gy+i,gx)*28)|0),3,3);break;}
+      case 17:{ // plowed soil
+        cx.fillStyle="#7a5230";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#684626";for(let i=0;i<TILE;i+=6)cx.fillRect(sx,sy+i,TILE,3);break;}
+      case 18:{ drawTile(17,sx,sy,gx,gy); // crop on soil
+        cx.fillStyle="#3a8a3a";cx.fillRect(sx+14,sy+8,2,16);cx.fillStyle="#46a84d";cx.fillRect(sx+10,sy+12,4,3);cx.fillRect(sx+18,sy+14,4,3);
+        cx.fillStyle="#f4c430";cx.fillRect(sx+12,sy+5,6,5);break;}
+      case 16:{ cx.fillStyle="#e7d3a1";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#dcc690";for(let i=0;i<4;i++)cx.fillRect(sx+((rnd(gx+i,gy)*28)|0),sy+((rnd(i,gy)*28)|0),2,2);break;}
+      case 3:{ // deep water
+        cx.fillStyle="#2f7fc0";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#3a90d4";const ph=Math.sin(animClock/500+gx*0.6+gy*0.4)*2;
+        cx.fillRect(sx+3,sy+9+ph,12,2);cx.fillRect(sx+17,sy+19-ph,9,2);
+        cx.fillStyle="#5fb0e8";cx.fillRect(sx+5,sy+5,6,1);cx.fillRect(sx+20,sy+24,5,1);break;}
+      case 20:{ // shallow water
+        cx.fillStyle="#4aa3d8";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#62b6e6";const ph=Math.sin(animClock/450+gx*0.5)*2;cx.fillRect(sx+4,sy+12+ph,10,2);break;}
+      case 19:{ // dock plank
+        cx.fillStyle="#b08552";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#9c734a";cx.fillRect(sx,sy,2,TILE);cx.fillRect(sx+15,sy,2,TILE);cx.fillRect(sx+30,sy,2,TILE);
+        cx.fillStyle="#c4955f";cx.fillRect(sx+2,sy+3,13,2);cx.fillRect(sx+17,sy+3,13,2);break;}
+      case 2:{ drawTile(0,sx,sy,gx,gy);
+        cx.fillStyle="#5a3d22";cx.fillRect(sx+13,sy+18,6,13);cx.fillStyle="#6b4a2a";cx.fillRect(sx+13,sy+18,2,13);
+        cx.fillStyle="#256b2a";cx.beginPath();cx.arc(sx+16,sy+12,13,0,7);cx.fill();
+        cx.fillStyle="#2f7d34";cx.beginPath();cx.arc(sx+10,sy+10,8,0,7);cx.arc(sx+22,sy+11,8,0,7);cx.fill();
+        cx.fillStyle="#3a9440";cx.beginPath();cx.arc(sx+14,sy+7,6,0,7);cx.arc(sx+19,sy+9,5,0,7);cx.fill();
+        cx.fillStyle="#46a84d";cx.beginPath();cx.arc(sx+13,sy+6,3,0,7);cx.fill();break;}
+      case 4:{ drawTile(0,sx,sy,gx,gy);
+        cx.fillStyle="#8a6240";cx.fillRect(sx+4,sy+9,3,18);cx.fillRect(sx+25,sy+9,3,18);
+        cx.fillStyle="#9c7049";cx.fillRect(sx,sy+12,TILE,3);cx.fillRect(sx,sy+20,TILE,3);
+        cx.fillStyle="#7a5530";cx.fillRect(sx+4,sy+9,3,2);cx.fillRect(sx+25,sy+9,3,2);break;}
+      case 9:{ drawTile(0,sx,sy,gx,gy);
+        cx.fillStyle="#b9845a";cx.fillRect(sx+3,sy+8,26,4);cx.fillStyle="#a9764a";cx.fillRect(sx+3,sy+14,26,5);
+        cx.fillStyle="#8a6038";cx.fillRect(sx+3,sy+19,26,2);cx.fillRect(sx+5,sy+21,3,7);cx.fillRect(sx+24,sy+21,3,7);break;}
+      case 5:{ cx.fillStyle="#e8d6b0";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#d8c290";cx.fillRect(sx,sy,TILE,3);cx.fillStyle="#cdb888";cx.fillRect(sx,sy+TILE-4,TILE,4);
+        cx.fillStyle="#9fc4e8";cx.fillRect(sx+7,sy+8,18,15);cx.fillStyle="#7ba9d6";cx.fillRect(sx+7,sy+8,18,4);
+        cx.strokeStyle="#b89a66";cx.lineWidth=2;cx.strokeRect(sx+7,sy+8,18,15);cx.beginPath();cx.moveTo(sx+16,sy+8);cx.lineTo(sx+16,sy+23);cx.stroke();break;}
+      case 6:{ cx.fillStyle="#c0504d";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#a83f3c";cx.fillRect(sx,sy+9,TILE,3);cx.fillRect(sx,sy+21,TILE,3);
+        cx.fillStyle="#cd5c58";cx.fillRect(sx,sy,TILE,5);
+        cx.fillStyle="#b84844";for(let i=0;i<TILE;i+=8)cx.fillRect(sx+i,sy+12,4,9);break;}
+      case 7:{ drawTile(1,sx,sy,gx,gy);
+        cx.fillStyle="#6b3f1c";cx.fillRect(sx+7,sy+3,18,29);cx.fillStyle="#8a5428";cx.fillRect(sx+9,sy+5,14,27);
+        cx.fillStyle="#5a3416";cx.fillRect(sx+15,sy+5,2,27);cx.fillStyle="#f4c430";cx.fillRect(sx+19,sy+18,3,4);break;}
+      case 11:{ cx.fillStyle="#d9b98e";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#cdaa7c";cx.fillRect(sx,sy,TILE,1);cx.fillRect(sx,sy,1,TILE);
+        cx.fillStyle="#c9a572";cx.fillRect(sx+TILE-1,sy,1,TILE);break;}
+      case 12:{ cx.fillStyle="#b58d63";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#c69a6e";cx.fillRect(sx,sy,TILE,4);cx.fillStyle="#9c7549";cx.fillRect(sx,sy+TILE-7,TILE,7);break;}
+      case 13:{ drawTile(11,sx,sy,gx,gy);
+        cx.fillStyle="#8a5428";cx.fillRect(sx+3,sy+9,26,13);cx.fillStyle="#6b3f1c";cx.fillRect(sx+3,sy+20,26,3);
+        cx.fillStyle="#a9764a";cx.fillRect(sx+3,sy+9,26,3);
+        cx.fillStyle="#fff";cx.fillRect(sx+7,sy+12,8,5);cx.fillStyle="#e0594d";cx.fillRect(sx+19,sy+12,4,5);break;}
+      case 14:{ drawTile(11,sx,sy,gx,gy);
+        cx.fillStyle="#5a3b22";cx.fillRect(sx,sy+1,TILE,4);
+        cx.fillStyle="#2f5d3a";cx.fillRect(sx,sy+5,TILE,20);cx.strokeStyle="#7a4a22";cx.lineWidth=2;cx.strokeRect(sx,sy+5,TILE,20);
+        cx.fillStyle="#cfe6d4";cx.fillRect(sx+4,sy+10,16,2);cx.fillRect(sx+4,sy+15,10,2);cx.fillRect(sx+20,sy+12,7,2);break;}
+      case 15:{ drawTile(0,sx,sy,gx,gy);
+        cx.fillStyle="#8a6038";cx.fillRect(sx+3,sy+15,26,14);
+        for(let i=0;i<5;i++){cx.fillStyle=i%2?"#e0594d":"#fff";cx.fillRect(sx+2+i*6,sy+5,6,9);}
+        cx.fillStyle="#a9764a";cx.fillRect(sx+2,sy+13,28,3);
+        cx.fillStyle="#f4c430";cx.fillRect(sx+7,sy+19,5,5);cx.fillStyle="#e85d75";cx.fillRect(sx+18,sy+19,5,5);break;}
+      case 21:{ // ore rock
+        cx.fillStyle="#3a2f44";cx.fillRect(sx,sy,TILE,TILE);
+        cx.fillStyle="#5a4d68";cx.beginPath();cx.moveTo(sx+5,sy+27);cx.lineTo(sx+9,sy+8);cx.lineTo(sx+22,sy+6);cx.lineTo(sx+28,sy+22);cx.lineTo(sx+24,sy+28);cx.closePath();cx.fill();
+        cx.fillStyle="#6e5f7e";cx.beginPath();cx.moveTo(sx+9,sy+8);cx.lineTo(sx+22,sy+6);cx.lineTo(sx+18,sy+16);cx.closePath();cx.fill();
+        const gem=rnd(gx,gy);
+        if(gem>0.66){cx.fillStyle="#7be0ff";cx.fillRect(sx+15,sy+15,4,4);cx.fillRect(sx+16,sy+19,3,3);}
+        else if(gem>0.33){cx.fillStyle="#ffcf6e";cx.fillRect(sx+14,sy+16,4,4);}
+        else {cx.fillStyle="#c98a5a";cx.fillRect(sx+15,sy+17,4,4);}
+        break;}
+    }
+  }
+
+  /* ============ CHARACTER RENDER (pixel, m/f, hairstyles, 4-dir, limbs) ============ */
+  function drawChar(ctx,ox,oy,dir,frame,scale,lookOverride){
+    const S=scale||1;
+    const lk=lookOverride||look;
+    const ci=(arr,i)=>arr[((i||0)%arr.length+arr.length)%arr.length];
+    const skin=ci(SKIN,lk.skin), shirt=ci(SHIRT,lk.shirt), pants=ci(PANTS,lk.pants), hair=ci(HAIRCOLOR,lk.haircolor);
+    const hat=ci(HAT,lk.hat).id, hs=ci(HAIRSTYLE,lk.hairstyle).id, girl=ci(BODY,lk.body).id==="girl";
+    const P=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(ox+x*S,oy+y*S,w*S,h*S);};
+    const swingF = frame===1?3:(frame===3?-3:0);
+    const bob = (frame===1||frame===3)?-1:0; const yo=bob;
+    ctx.fillStyle="rgba(0,0,0,.2)";ctx.beginPath();ctx.ellipse(ox+16*S,oy+38*S,9*S,3*S,0,0,7);ctx.fill();
+
+    const back = dir==="up";
+    if(dir==="down"||dir==="up"){
+      // legs
+      if(girl){ // skirt
+        P(9,28+yo,14,5,pants);
+        P(11,33+yo,4,5,skin);P(17,33+yo,4,5,skin); // legs below skirt
+        if(frame===1)P(11,33+yo,4,6,skin);if(frame===3)P(17,33+yo,4,6,skin);
+        P(11,38+yo,4,2,"#7a3b2a");P(17,38+yo,4,2,"#7a3b2a"); // shoes
+      } else {
+        P(11,30+yo,4,8,pants);P(17,30+yo,4,8,pants);
+        if(frame===1)P(11,30+yo,4,9,pants);if(frame===3)P(17,30+yo,4,9,pants);
+        P(11,38+yo,4,2,"#3a2a18");P(17,38+yo,4,2,"#3a2a18");
+      }
+      // body
+      P(9,18+yo,14,12,shirt);
+      P(9,18+yo,14,2, shade(shirt,-18)); // collar shade
+      // arms
+      P(6,19+yo,4,9,shirt);P(22,19+yo,4,9,shirt);
+      P(6,27+yo,4,2,skin);P(22,27+yo,4,2,skin);
+      // neck + head
+      P(13,15+yo,6,3,skin);
+      P(9,5+yo,14,12,skin);
+      // face (front only)
+      if(!back){
+        P(12,11+yo,2,2,"#2a1c0e");P(18,11+yo,2,2,"#2a1c0e");
+        P(14,14+yo,4,1,"#a85a4a");
+        ctx.fillStyle="rgba(230,120,120,.4)";ctx.fillRect(ox+11*S,oy+(12+yo)*S,2*S,2*S);ctx.fillRect(ox+19*S,oy+(12+yo)*S,2*S,2*S);
+      }
+      drawHair(P,hs,hair,yo,back,girl);
+      drawHat(P,hat,yo,dir);
+    } else {
+      const flip=dir==="left";
+      ctx.save(); if(flip){ctx.translate(ox*2+32*S,0);ctx.scale(-1,1);}
+      const Q=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(ox+x*S,oy+y*S,w*S,h*S);};
+      const lf=frame===1?3:(frame===3?-3:0);
+      if(girl){ Q(11,28+yo,12,5,pants); Q(13,33+yo,4,5,skin);Q(16+lf,33+yo,4,5,skin); Q(13,38+yo,5,2,"#7a3b2a");Q(16+lf,38+yo,5,2,"#7a3b2a"); }
+      else { Q(12,30+yo,4,8,pants);Q(15+lf,30+yo,4,8,pants); Q(12,38+yo,5,2,"#3a2a18");Q(15+lf,38+yo,5,2,"#3a2a18"); }
+      Q(11,18+yo,11,12,shirt); Q(11,18+yo,11,2,shade(shirt,-18));
+      Q(14-lf,20+yo,4,8,shirt); Q(14-lf,27+yo,4,2,skin);
+      Q(12,5+yo,12,12,skin);
+      Q(19,11+yo,2,2,"#2a1c0e"); Q(23,12+yo,2,2,skin); Q(20,14+yo,3,1,"#a85a4a");
+      drawHairSide(Q,hs,hair,yo,girl);
+      drawHatSide(Q,hat,yo);
+      ctx.restore();
+    }
+  }
+  function shade(hex,amt){ // lighten/darken; supports #abc and #aabbcc
+    let h=hex.slice(1);
+    if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    const n=parseInt(h,16);let r=(n>>16)+amt,g=((n>>8)&255)+amt,b=(n&255)+amt;
+    r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));
+    return "#"+((r<<16)|(g<<8)|b).toString(16).padStart(6,'0');
+  }
+  function drawHair(P,hs,hair,yo,back,girl){
+    // base cap
+    P(8,3+yo,16,6,hair);
+    if(hs==="buzz"){P(8,3+yo,16,4,hair);return;}
+    if(hs==="short"||hs==="spiky"){ P(8,3+yo,4,8,hair);P(20,3+yo,4,8,hair);
+      if(hs==="spiky"){P(9,1+yo,3,3,hair);P(14,0+yo,3,4,hair);P(19,1+yo,3,3,hair);} }
+    if(hs==="bob"){ P(7,3+yo,18,11,hair); if(!back){P(7,8+yo,3,5,hair);P(22,8+yo,3,5,hair);} P(8,9+yo,16,2,hair);}
+    if(hs==="long"){ P(7,3+yo,18,8,hair); P(6,9+yo,4,18,hair);P(22,9+yo,4,18,hair); if(back)P(8,9+yo,16,18,hair); }
+    if(hs==="pony"){ P(8,3+yo,16,7,hair); P(8,3+yo,3,7,hair);P(21,3+yo,3,7,hair);
+      P(23,6+yo,4,4,hair);P(25,9+yo,4,12,hair); } // side ponytail
+    if(hs==="twin"){ P(8,3+yo,16,7,hair); P(5,7+yo,4,12,hair);P(23,7+yo,4,12,hair); P(4,16+yo,4,5,hair);P(24,16+yo,4,5,hair); } // twin tails
+    if(girl && (hs==="short"||hs==="bob")){ /* bangs already ok */ }
+  }
+  function drawHairSide(Q,hs,hair,yo,girl){
+    Q(11,3+yo,13,7,hair);Q(11,3+yo,4,11,hair);
+    if(hs==="buzz"){return;}
+    if(hs==="spiky"){Q(12,1+yo,3,3,hair);Q(17,0+yo,3,4,hair);}
+    if(hs==="bob"){Q(11,3+yo,14,12,hair);Q(11,9+yo,4,5,hair);}
+    if(hs==="long"){Q(10,3+yo,14,8,hair);Q(9,9+yo,5,18,hair);}
+    if(hs==="pony"){Q(9,5+yo,5,14,hair);Q(7,12+yo,4,9,hair);}
+    if(hs==="twin"){Q(9,6+yo,4,12,hair);Q(8,16+yo,4,5,hair);}
+  }
+  function drawHat(P,hat,yo,dir){
+    const back=dir==="up";
+    if(hat==="cap"){P(7,1+yo,18,4,"#1d5494");if(!back)P(7,4+yo,12,2,"#1d5494");}
+    if(hat==="straw"){P(4,3+yo,24,3,"#d9b46a");P(8,-1+yo,16,5,"#e8c878");P(4,3+yo,24,2,"#c49a54");}
+    if(hat==="bow"){P(6,2+yo,5,4,"#e0599a");P(21,2+yo,5,4,"#e0599a");P(14,2+yo,4,3,"#c23c7d");}
+    if(hat==="crown"){P(8,-1+yo,16,4,"#f4b836");P(9,-4+yo,2,4,"#f4b836");P(15,-5+yo,2,5,"#f4b836");P(21,-4+yo,2,4,"#f4b836");P(11,0+yo,2,2,"#e0392b");P(19,0+yo,2,2,"#3a86d6");}
+    if(hat==="band"){P(7,3+yo,18,2,"#16a085");}
+    if(hat==="flower"){P(6,3+yo,18,2,"#3a8a3a");P(4,1+yo,4,4,"#e85d75");P(5,2+yo,2,2,"#f4c430");}
+  }
+  function drawHatSide(Q,hat,yo){
+    if(hat==="cap"){Q(10,1+yo,15,4,"#1d5494");Q(22,2+yo,6,2,"#1d5494");}
+    if(hat==="straw"){Q(7,3+yo,20,3,"#d9b46a");Q(11,-1+yo,14,5,"#e8c878");}
+    if(hat==="bow"){Q(9,2+yo,5,4,"#e0599a");}
+    if(hat==="crown"){Q(11,-1+yo,14,4,"#f4b836");Q(12,-4+yo,2,4,"#f4b836");Q(18,-4+yo,2,4,"#f4b836");}
+    if(hat==="band"){Q(11,3+yo,14,2,"#16a085");}
+    if(hat==="flower"){Q(10,3+yo,15,2,"#3a8a3a");Q(8,1+yo,4,4,"#e85d75");}
+  }
+
+  let animPrev=0;
+  function drawPreview(){
+    px.clearRect(0,0,pv.width,pv.height);
+    px.fillStyle="#bfe08f";px.fillRect(0,90,pv.width,pv.height-90);
+    px.fillStyle="#9ccc6a";px.fillRect(0,118,pv.width,4);
+    drawChar(px,33,18,"down",animPrev,3.2);
+  }
+  setInterval(()=>{ const d=document.getElementById('dress'); if(d.style.display==='block'){animPrev=(animPrev+1)%4;drawPreview();}},200);
+
+  /* ============ CAMERA & RENDER ============ */
+  function curGrid(){return MAPS[player.map].grid;}
+  function render(){
+    const grid=curGrid();
+    const mw=grid[0].length*TILE, mh=grid.length*TILE;
+    let camX=Math.round(player.px+TILE/2-VIEW_W/2), camY=Math.round(player.py+TILE/2-VIEW_H/2);
+    camX=Math.max(0,Math.min(camX,Math.max(0,mw-VIEW_W)));
+    camY=Math.max(0,Math.min(camY,Math.max(0,mh-VIEW_H)));
+    if(mw<VIEW_W)camX=-((VIEW_W-mw)/2); if(mh<VIEW_H)camY=-((VIEW_H-mh)/2);
+
+    cx.clearRect(0,0,VIEW_W,VIEW_H);
+    cx.fillStyle = player.map==="mine" ? "#1e1828" : (player.map==="classroom"?"#b58d63":"#3a5a2a");
+    cx.fillRect(0,0,VIEW_W,VIEW_H);
+
+    const sc=Math.max(0,Math.floor(camX/TILE)), ec=Math.min(grid[0].length-1,Math.floor((camX+VIEW_W)/TILE)+1);
+    const sr=Math.max(0,Math.floor(camY/TILE)), er=Math.min(grid.length-1,Math.floor((camY+VIEW_H)/TILE)+1);
+    for(let r=sr;r<=er;r++)for(let c=sc;c<=ec;c++) drawTile(grid[r][c],c*TILE-camX,r*TILE-camY,c,r);
+
+    // quest nodes
+    (questState[player.map]||[]).forEach(q=>{ if(q.done)return;
+      const qx=q.x*TILE-camX, qy=q.y*TILE-camY, fl=Math.sin(animClock/300+q.x)*3;
+      if(q.k==="crop"){ /* crop tile already drawn via map? draw marker */
+        cx.fillStyle="rgba(91,184,91,.3)";cx.beginPath();cx.arc(qx+16,qy+16,12,0,7);cx.fill();
+        cx.font="18px sans-serif";cx.textAlign="center";cx.textBaseline="middle";cx.fillText("🌱",qx+16,qy+10+fl);
+      } else {
+        cx.fillStyle="rgba(58,134,214,.3)";cx.beginPath();cx.arc(qx+16,qy+16,13,0,7);cx.fill();
+        cx.font="21px sans-serif";cx.textAlign="center";cx.textBaseline="middle";cx.fillText("❓",qx+16,qy+12+fl);
+      }
+    });
+
+    // remote players (multiplayer) — same map only
+    if(typeof NET!=="undefined" && NET.peers){
+      for(const id in NET.peers){
+        const rp=NET.peers[id];
+        const rx=Math.round(rp.x-camX), ry=Math.round(rp.y-camY-8);
+        // skip if far off-screen
+        if(rx<-40||rx>VIEW_W+40||ry<-50||ry>VIEW_H+50) continue;
+        drawChar(cx,rx,ry,rp.dir||"down",rp.frame||0,1,rp.look||{});
+        // name + level tag
+        const label=(rp.name||"?")+"  Lv."+(rp.lvl||1);
+        cx.font="bold 11px 'Baloo 2',sans-serif"; cx.textAlign="center"; cx.textBaseline="alphabetic";
+        const tw=cx.measureText(label).width;
+        cx.fillStyle="rgba(20,14,5,.7)"; cx.fillRect(rx+16-tw/2-5, ry-12, tw+10, 15);
+        cx.fillStyle="#ffe9b8"; cx.fillText(label, rx+16, ry-1);
+      }
+    }
+
+    // player
+    drawChar(cx,Math.round(player.px-camX),Math.round(player.py-camY-8),player.dir,player.moving?player.frame:0,1);
+
+    // facing indicator (tool target highlight)
+    const tgt=facingTile();
+    if(tgt){ const hx=tgt.tc*TILE-camX, hy=tgt.tr*TILE-camY;
+      cx.strokeStyle="rgba(255,217,94,.7)";cx.lineWidth=2;cx.strokeRect(hx+2,hy+2,TILE-4,TILE-4); }
+
+    // vignette / mine darkness
+    const g=cx.createRadialGradient(VIEW_W/2,VIEW_H/2,VIEW_H/3,VIEW_W/2,VIEW_H/2,VIEW_H/(player.map==="mine"?1.1:0.85));
+    g.addColorStop(0,"rgba(0,0,0,0)");g.addColorStop(1, player.map==="mine"?"rgba(0,0,0,0.55)":"rgba(0,0,0,0.2)");
+    cx.fillStyle=g;cx.fillRect(0,0,VIEW_W,VIEW_H);
+  }
+
+  function facingTile(){
+    const grid=curGrid(); const cxp=player.px+16, cyp=player.py+22;
+    let tc=Math.floor(cxp/TILE), tr=Math.floor(cyp/TILE);
+    if(player.dir==="up")tr--; else if(player.dir==="down")tr++; else if(player.dir==="left")tc--; else tc++;
+    if(tr<0||tc<0||tr>=grid.length||tc>=grid[0].length)return null;
+    return {tc,tr,code:grid[tr][tc]};
+  }
+
+  /* ============ MOVEMENT ============ */
+  const SPEED=2.4; let lastTime=0;
+  function canStand(pxpos,pypos){
+    const grid=curGrid(); const fL=pxpos+8,fR=pxpos+24,fT=pypos+18,fB=pypos+30;
+    for(const [xx,yy] of [[fL,fT],[fR,fT],[fL,fB],[fR,fB]]){
+      const tc=Math.floor(xx/TILE),tr=Math.floor(yy/TILE);
+      if(tr<0||tc<0||tr>=grid.length||tc>=grid[0].length)return false;
+      if(solid(grid[tr][tc]))return false;
+    } return true;
+  }
+  function tryDoor(){
+    const grid=curGrid(); const cxp=player.px+16, cyp=player.py+26;
+    const d=doorAt(player.map,Math.floor(cxp/TILE),Math.floor(cyp/TILE));
+    if(d){ player.map=d.map; player.px=d.x*TILE; player.py=d.y*TILE;
+      document.getElementById('zoneName').textContent=MAPS[d.map].name;
+      flash("เข้าสู่ "+MAPS[d.map].name+" 🚪");
+      if(d.map==="mine")flash("⛏️ เหมืองแร่! เดินไปชนก้อนหิน 🪨 แล้วกด SPACE เพื่อขุด/สู้มอนสเตอร์");
+      if(d.map==="dock")flash("🎣 ท่าน้ำ! เดินไปริมน้ำ ถือคันเบ็ด (กด 1) แล้วกด SPACE เพื่อตกปลา");
+    }
+  }
+  function checkQuestCollision(){
+    const list=questState[player.map]||[]; const cxp=player.px+16, cyp=player.py+22;
+    for(const q of list){ if(q.done)continue;
+      const qx=q.x*TILE+16, qy=q.y*TILE+16;
+      if(Math.abs(cxp-qx)<22 && Math.abs(cyp-qy)<22){ openQuiz('gather',q); break; }
+    }
+  }
+  function modalOpen(){
+    return document.getElementById('quizbox').style.display==='flex'
+        || document.getElementById('fishbox').style.display==='flex'
+        || document.getElementById('minebox').style.display==='flex';
+  }
+  function update(dt){
+    if(!joined){render();return;}
+    if(modalOpen()){ player.moving=false; player.frame=0; render(); return; }
+    let dx=0,dy=0;
+    if(keys['arrowup']||keys['w']){dy=-1;player.dir="up";}
+    else if(keys['arrowdown']||keys['s']){dy=1;player.dir="down";}
+    else if(keys['arrowleft']||keys['a']){dx=-1;player.dir="left";}
+    else if(keys['arrowright']||keys['d']){dx=1;player.dir="right";}
+    player.moving=(dx||dy);
+    if(player.moving){
+      const step=SPEED*(dt/16.7);
+      let nx=player.px+dx*step; if(canStand(nx,player.py))player.px=nx;
+      let ny=player.py+dy*step; if(canStand(player.px,ny))player.py=ny;
+      player.frameTimer+=dt; if(player.frameTimer>100){player.frameTimer=0;player.frame=(player.frame+1)%4;}
+      tryDoor(); checkQuestCollision();
+    } else player.frame=0;
+    render();
+  }
+  function loop(t){ const dt=Math.min(40,t-lastTime||16); lastTime=t; animClock=t; update(dt); if(typeof netSend==="function") netSend(); requestAnimationFrame(loop); }
+
+  /* ============ ACTIONS (SPACE) ============ */
+  function doAction(){
+    if(!joined || modalOpen())return;
+    const tgt=facingTile(); if(!tgt)return;
+    const tool=TOOLS[player.activeTool].id;
+    // fishing: face water with rod
+    if(isFishTile(player.map,tgt.code)){
+      if(tool!=="rod"){flash("ต้องถือ 🎣 คันเบ็ด (กดเลข 1) ก่อนตกปลา");return;}
+      if(player.energy<10){flash("พลังงานไม่พอ! ตอบคำศัพท์ที่ฟาร์ม/ห้องเรียนเพื่อเติมพลัง ⚡");return;}
+      startFishing(); return;
+    }
+    // mining: face ore with pick
+    if(player.map==="mine" && tgt.code===21){
+      if(tool!=="pick"){flash("ต้องถือ ⛏️ พลั่ว (กดเลข 2) ก่อนขุด");return;}
+      if(player.energy<10){flash("พลังงานไม่พอ! กลับไปตอบคำศัพท์เพื่อเติมพลัง ⚡");return;}
+      startMining(tgt); return;
+    }
+    flash("ไม่มีอะไรให้ทำตรงนี้ — ลองหันหน้าเข้าหา 💧 น้ำ, 🪨 หิน, หรือ ❓ จุดคำศัพท์");
+  }
+
+  /* ============ QUIZ (shared) ============ */
+  let queues={};
+  function nextQuestion(g){if(!queues[g]||queues[g].length===0)queues[g]=[...Array(W[g].length).keys()].sort(()=>Math.random()-0.5);return W[g][queues[g].pop()];}
+  let quizMode=null, quizCtx=null, quizCallback=null;
+  function openQuiz(mode,ctxObj,cb){
+    if(quizMode)return;
+    quizMode=mode; quizCtx=ctxObj; quizCallback=cb||null;
+    const base=nextQuestion(player.grade);
+    const idxs=[0,1,2].sort(()=>Math.random()-0.5);
+    const opts=idxs.map(i=>base.o[i]); const ans=idxs.indexOf(base.a);
+    quizCtx._q={o:opts,a:ans};
+    document.getElementById('quizbox').style.display='flex';
+    let tag = mode==='gather' ? (ctxObj.k==='crop'?'เก็บเกี่ยว 🌱':'หาวัตถุดิบ ❓')
+            : mode==='fish' ? 'ตกปลา 🎣' : 'ขุด/สู้ ⛏️';
+    document.getElementById('q-tag').textContent=`ป.${player.grade} · ${tag}`;
+    document.getElementById('q-text').textContent=base.q;
+    document.getElementById('q-feedback').textContent='';
+    const wrap=document.getElementById('q-opts');wrap.innerHTML='';
+    opts.forEach((opt,idx)=>{const b=document.createElement('button');b.className='opt-btn';b.textContent=opt;b.onclick=()=>quizAnswer(idx,b);wrap.appendChild(b);});
+  }
+  function quizAnswer(idx,btn){
+    const q=quizCtx._q, fb=document.getElementById('q-feedback');
+    document.querySelectorAll('#quizbox .opt-btn').forEach(b=>b.disabled=true);
+    const correct = idx===q.a;
+    if(correct){ btn.classList.add('right'); }
+    else { btn.classList.add('wrong'); document.querySelectorAll('#quizbox .opt-btn')[q.a].classList.add('right'); }
+
+    if(quizMode==='gather'){
+      if(correct){
+        gainXP(3);
+        let txt="ถูกต้อง! ";
+        if(quizCtx.k==='crop'){ addItem('fiber',1); addItem('wood', Math.random()<0.5?1:0); restoreEnergy(15); txt+="ได้ 🌿 เส้นใย +1 และเติมพลังงาน ⚡+15"; }
+        else {
+          const drops=[['wood',2],['fiber',1],['stone',2],['copper',1]];
+          const d=drops[Math.floor(Math.random()*drops.length)]; addItem(d[0],d[1]); restoreEnergy(20);
+          txt+=`ได้ ${MAT[d[0]]} ${MATNAME[d[0]]} +${d[1]} และพลังงาน ⚡+20`;
+        }
+        fb.style.color='var(--green-d)';fb.textContent=txt;
+        quizCtx.done=true;
+      } else { fb.style.color='var(--red-d)';fb.textContent=`ยังไม่ถูก เฉลย: ${q.o[q.a]} — ลองจุดอื่น!`; }
+      finishQuiz(()=>{ if((questState[player.map]||[]).every(x=>x.done)){questState[player.map]=QUESTS[player.map].map(x=>({...x,done:false}));flash('เก็บครบโซนนี้แล้ว เกิดใหม่อีกชุด 🌱');} });
+    }
+    else if(quizMode==='fish'){
+      const fish=quizCtx.fish; // capture before quizCtx is cleared
+      finishQuiz(()=> fishingResolve(correct, fish) );
+    }
+    else if(quizMode==='mine'){
+      finishQuiz(()=> miningResolve(correct) );
+    }
+  }
+  function finishQuiz(after){
+    setTimeout(()=>{ document.getElementById('quizbox').style.display='none';
+      const cb=after; quizMode=null; quizCtx=null; if(cb)cb(); refresh();
+    },1200);
+  }
+
+  /* ============ FISHING ============ */
+  let fishing=false, fishState=null, fishRAF=null;
+  function startFishing(){
+    consumeEnergy(10);
+    fishing=true;
+    // choose fish rarity by level & luck (rod2 boosts)
+    const rodLv=player.tools.rod;
+    const roll=Math.random()+ (rodLv-1)*0.12 + player.lvl*0.01;
+    let fish = roll>0.92?{k:"fish_l",e:"🦈",nm:"ปลาตำนาน",hard:1.7}: roll>0.7?{k:"fish_r",e:"🐠",nm:"ปลาหายาก",hard:1.3}:{k:"fish_c",e:"🐟",nm:"ปลาธรรมดา",hard:1.0};
+    fishState={
+      fish, pos:160, vel:0, fishPos:120, fishVel:1, fishTimer:0,
+      barH:64, prog:18, areaH:200, reel:false
+    };
+    document.getElementById('fishbox').style.display='flex';
+    document.getElementById('fishIcon').textContent=fish.e;
+    fishLoop();
+  }
+  const fishReelBtn=document.getElementById('fishReel');
+  ['mousedown','touchstart'].forEach(ev=>fishReelBtn.addEventListener(ev,e=>{e.preventDefault();if(fishState)fishState.reel=true;}));
+  ['mouseup','touchend','mouseleave'].forEach(ev=>fishReelBtn.addEventListener(ev,e=>{e.preventDefault();if(fishState)fishState.reel=false;}));
+  document.getElementById('fishQuit').onclick=()=>endFishing(false,"ยกเลิกการตกปลา");
+  function fishLoop(){
+    if(!fishing){return;}
+    const s=fishState; const H=s.areaH-20; // track height usable
+    // input
+    const reeling = s.reel || keys[' '] ;
+    s.vel += reeling? -0.6 : 0.55; s.vel*=0.92;
+    s.pos += s.vel; const barTop=10; const barBottom=10+H-s.barH;
+    if(s.pos<barTop){s.pos=barTop;s.vel=0;} if(s.pos>barBottom){s.pos=barBottom;s.vel=0;}
+    // fish movement (erratic)
+    s.fishTimer--; if(s.fishTimer<=0){ s.fishVel=(Math.random()*2-1)*1.8*s.fish.hard; s.fishTimer=20+Math.random()*40; }
+    s.fishPos+=s.fishVel; if(s.fishPos<barTop+4){s.fishPos=barTop+4;s.fishVel*=-1;} if(s.fishPos>10+H-12){s.fishPos=10+H-12;s.fishVel*=-1;}
+    // overlap?
+    const inBar = s.fishPos> s.pos-6 && s.fishPos < s.pos+s.barH+6;
+    s.prog += inBar? 0.55 : -0.45*s.fish.hard;
+    s.prog=Math.max(0,Math.min(100,s.prog));
+    // render
+    const track=document.querySelector('.fish-track'); const trackTop=track.offsetTop, trackH=track.offsetHeight;
+    const scale=trackH/H;
+    const bar=document.getElementById('fishBar'); bar.style.top=(trackTop+s.pos*scale)+"px"; bar.style.height=(s.barH*scale)+"px";
+    const tgt=document.getElementById('fishTarget'); tgt.style.display='none';
+    const fi=document.getElementById('fishIcon'); fi.style.top=(trackTop+s.fishPos*scale)+"px";
+    document.getElementById('fishProg').style.height=s.prog+"%";
+    if(s.prog>=100){ endFishing(true); return; }
+    if(s.prog<=0){ endFishing(false,"ปลาหลุด! 🎣💨"); return; }
+    fishRAF=requestAnimationFrame(fishLoop);
+  }
+  function endFishing(caught,msg){
+    if(fishRAF)cancelAnimationFrame(fishRAF);
+    fishing=false;
+    document.getElementById('fishbox').style.display='none';
+    if(caught){
+      // confirm with a vocab question to actually land it (English focus)
+      const fish=fishState.fish;
+      openQuiz('fish',{fish}, null);
+    } else { flash(msg||"พลาด!"); }
+    fishState=null;
+  }
+  function fishingResolve(correct, fish){
+    if(correct){
+      addItem(fish.k,1); gainXP(fish.k==="fish_l"?12:fish.k==="fish_r"?7:4);
+      if(fish.k==="fish_r"&&Math.random()<0.3)addItem('pearl',1);
+      if(fish.k==="fish_l"&&Math.random()<0.5)addItem('pearl',1);
+      flash(`จับ ${fish.e} ${fish.nm} ได้! เก็บเข้ากระเป๋า`);
+    } else {
+      flash(`ตอบผิด ปลา ${fish.e} ดิ้นหลุดไป! แต่ได้ฝึกคำศัพท์`);
+      gainXP(1);
+    }
+  }
+
+  /* ============ MINING / COMBAT ============ */
+  let mineCtx=null;
+  function startMining(tgt){
+    consumeEnergy(8);
+    // 40% chance monster encounter, else ore
+    const monster = Math.random()<0.4;
+    if(monster){
+      const mons=[{e:"🦇",nm:"ค้างคาวถ้ำ",hp:3},{e:"🟣",nm:"สไลม์ม่วง",hp:4},{e:"👾",nm:"โกเลมแร่",hp:5},{e:"🕷️",nm:"แมงมุมยักษ์",hp:4}];
+      const m={...mons[Math.floor(Math.random()*mons.length)]}; m.maxhp=m.hp;
+      mineCtx={type:"monster",mon:m,tgt};
+      document.getElementById('mineTitle').textContent="⚔️ มอนสเตอร์โผล่!";
+      document.getElementById('mineTarget').textContent=m.e;
+      document.getElementById('mineTarget').className="monster";
+      document.getElementById('monHpWrap').style.display='block';
+      document.getElementById('monHpFill').style.width="100%";
+      document.getElementById('mineMsg').textContent=`${m.nm} (HP ${m.hp}) — ตอบคำศัพท์ถูกเพื่อโจมตี!`;
+    } else {
+      const ore={type:"ore",hits: 2+Math.floor(Math.random()*2), tgt}; ore.maxhits=ore.hits;
+      mineCtx=ore;
+      document.getElementById('mineTitle').textContent="⛏️ ขุดแร่";
+      document.getElementById('mineTarget').textContent="🪨";
+      document.getElementById('mineTarget').className="rock";
+      document.getElementById('monHpWrap').style.display='none';
+      document.getElementById('mineMsg').textContent=`ก้อนแร่แข็ง! ตอบคำศัพท์ ${ore.hits} ครั้งเพื่อทุบให้แตก`;
+    }
+    document.getElementById('minebox').style.display='flex';
+  }
+  document.getElementById('mineHit').onclick=()=>{ if(mineCtx) openQuiz('mine',{}, null); };
+  document.getElementById('mineQuit').onclick=()=>{ document.getElementById('minebox').style.display='none'; mineCtx=null; };
+  function miningResolve(correct){
+    if(!mineCtx)return;
+    if(mineCtx.type==="monster"){
+      const m=mineCtx.mon;
+      if(correct){
+        m.hp--; gainXP(2);
+        const el=document.getElementById('mineTarget'); el.style.transform="scale(1.2) rotate(8deg)"; setTimeout(()=>el.style.transform="",120);
+        document.getElementById('monHpFill').style.width=(m.hp/m.maxhp*100)+"%";
+        if(m.hp<=0){
+          // reward
+          const drops=[['iron',2],['copper',3],['gem',1],['essence', Math.random()<0.3?1:0]];
+          const d=drops[Math.floor(Math.random()*drops.length)]; addItem(d[0],Math.max(1,d[1]));
+          if(Math.random()<0.25)addItem('essence',1);
+          gainXP(8);
+          document.getElementById('mineMsg').textContent=`ชนะ ${m.nm}! ได้ของหายาก 💎`;
+          flash(`ปราบ ${m.e} ${m.nm} สำเร็จ! ได้วัตถุดิบหายาก`);
+          setTimeout(()=>{document.getElementById('minebox').style.display='none';mineCtx=null;},900);
+        } else {
+          document.getElementById('mineMsg').textContent=`โจมตีโดน! ${m.nm} เหลือ HP ${m.hp} — ตอบต่อ!`;
+        }
+      } else {
+        // monster hits back
+        player.hp=Math.max(0,player.hp-12);
+        const el=document.getElementById('mineTarget'); el.style.transform="translateX(-8px)";setTimeout(()=>el.style.transform="",100);
+        document.getElementById('mineMsg').textContent=`ตอบผิด! ${m.nm} โจมตีกลับ HP -12 ❤️`;
+        refresh();
+        if(player.hp<=0){ flash("HP หมด! กลับฟาร์มพักฟื้น"); document.getElementById('minebox').style.display='none'; mineCtx=null; player.hp=Math.round(player.hpMax*0.5); player.map="farm"; player.px=MAPS.farm.spawn.x*TILE; player.py=MAPS.farm.spawn.y*TILE; document.getElementById('zoneName').textContent=MAPS.farm.name; refresh(); }
+      }
+    } else { // ore
+      if(correct){
+        mineCtx.hits--; gainXP(2);
+        const el=document.getElementById('mineTarget'); el.style.transform="scale(0.9)";setTimeout(()=>el.style.transform="",100);
+        if(mineCtx.hits<=0){
+          const roll=Math.random();
+          let drop = roll>0.85?['gold_ore',1]: roll>0.55?['iron',2]: roll>0.25?['copper',2]:['stone',3];
+          addItem(drop[0],drop[1]); if(Math.random()<0.2)addItem('gem',1);
+          gainXP(5);
+          document.getElementById('mineMsg').textContent=`แร่แตก! ได้ ${MAT[drop[0]]} ${MATNAME[drop[0]]} +${drop[1]}`;
+          flash(`ขุดได้ ${MAT[drop[0]]} ${MATNAME[drop[0]]}!`);
+          setTimeout(()=>{document.getElementById('minebox').style.display='none';mineCtx=null;},900);
+        } else {
+          document.getElementById('mineMsg').textContent=`ทุบโดน! เหลืออีก ${mineCtx.hits} ครั้ง`;
+        }
+      } else {
+        document.getElementById('mineMsg').textContent=`ตอบผิด พลั่วลื่น! ลองใหม่ (เหลือ ${mineCtx.hits} ครั้ง)`;
+      }
+    }
+  }
+
+  /* ============ PROGRESSION / INVENTORY ============ */
+  function addItem(k,n){ if(!n)return; player.bag[k]=(player.bag[k]||0)+n; refresh(); }
+  function hasItems(need){ return Object.entries(need).every(([k,v])=>(player.bag[k]||0)>=v); }
+  function consumeItems(need){ Object.entries(need).forEach(([k,v])=>{player.bag[k]-=v; if(player.bag[k]<=0)delete player.bag[k];}); }
+  function consumeEnergy(n){ player.energy=Math.max(0,player.energy-n); refresh(); }
+  function restoreEnergy(n){ player.energy=Math.min(player.energyMax,player.energy+n); refresh(); }
+  function gainXP(n){
+    player.xp+=n;
+    while(player.xp>=player.xpNext){
+      player.xp-=player.xpNext; player.lvl++;
+      player.xpNext=Math.round(player.xpNext*1.35);
+      player.energyMax+=10; player.hpMax+=8; player.energy=player.energyMax; player.hp=player.hpMax;
+      flash(`🎉 เลเวลอัป! ตอนนี้ Lv.${player.lvl} — พลังงาน/HP เพิ่มขึ้น`);
+    }
+    refresh();
+  }
+
+  /* ============ HUD RENDER ============ */
+  const $=id=>document.getElementById(id);
+  function refresh(){
+    $('lvl').textContent=player.lvl; $('coins').textContent=player.coins; $('gems').textContent=player.gems;
+    $('xpfill').style.width=Math.min(100,player.xp/player.xpNext*100)+"%";
+    $('energyFill').style.width=(player.energy/player.energyMax*100)+"%";
+    $('hpFill').style.width=(player.hp/player.hpMax*100)+"%";
+    // bag
+    const keysB=Object.keys(player.bag);
+    $('bag').innerHTML=keysB.length? keysB.map(k=>`<span class="invchip">${MAT[k]||'❔'} ${MATNAME[k]||k}<span class="ct">${player.bag[k]}</span></span>`).join('') : '<span class="empty">ยังไม่มีของ — ตอบคำศัพท์ ตกปลา ขุดแร่เพื่อเก็บวัตถุดิบ</span>';
+    // board (use level as ranking metric)
+    const merged=board.concat(joined?[{name:player.name||"คุณ",score:player.lvl,me:true}]:[]).sort((a,b)=>b.score-a.score).slice(0,5);
+    $('board').innerHTML=merged.map((r,i)=>`<div class="row ${r.me?'me':''}"><span><span class="rank r${i+1}">${i+1}</span>${r.name}</span><span>Lv.${r.score}</span></div>`).join('');
+    $('wordcount').textContent=`(คลังคำศัพท์ ${totalWords} ข้อ)`;
+    renderCraft();
+  }
+  function renderCraft(){
+    $('craft').innerHTML=RECIPES.map(r=>{
+      const need=Object.entries(r.need).map(([k,v])=>`${MAT[k]}${v}`).join(' ');
+      const ok=hasItems(r.need)&&player.lvl>=r.lvl;
+      const lvltxt=player.lvl<r.lvl?`<span style="color:var(--red-d)">ต้อง Lv.${r.lvl}</span>`:'';
+      return `<div class="recipe"><div class="emoji">${r.e}</div><div class="nm">${r.nm}</div><div class="need">ต้องใช้: ${need}<br>${lvltxt}</div><button class="btn ${ok?'green':'gold'}" data-craft="${r.id}" ${ok?'':'disabled'}>${r.tool?'คราฟต์เครื่องมือ':'คราฟต์'}</button></div>`;
+    }).join('');
+    document.querySelectorAll('[data-craft]').forEach(b=>b.onclick=()=>craft(b.dataset.craft));
+  }
+  function craft(id){
+    const r=RECIPES.find(x=>x.id===id); if(!r)return;
+    if(player.lvl<r.lvl){flash(`ต้องถึง Lv.${r.lvl} ก่อนถึงจะคราฟต์ "${r.nm}" ได้`);return;}
+    if(!hasItems(r.need)){flash(`วัตถุดิบไม่พอสำหรับ "${r.nm}"`);return;}
+    consumeItems(r.need);
+    gainXP(10);
+    if(r.tool){
+      if(r.tool==="rod2"){player.tools.rod=2;flash(`คราฟต์ ${r.e} ${r.nm} สำเร็จ! ตกปลาหายากง่ายขึ้น`);}
+      if(r.tool==="pick2"){player.tools.pick=2;flash(`คราฟต์ ${r.e} ${r.nm} สำเร็จ! ขุดแร่เก่งขึ้น`);}
+    } else {
+      player.gems+=1;
+      flash(`🎉 คราฟต์ "${r.nm}" ${r.e} สำเร็จ! นี่คือของรางวัลหายาก — ไปรับจริงที่ห้องกิจการนักเรียนได้เลย`);
+    }
+    refresh();
+  }
+  function renderShop(){
+    $('shop').innerHTML=SHOP.map((s,i)=>`<div class="item"><div class="emoji">${s.e}</div><div class="nm">${s.n}</div><div class="price">🪙${s.c}</div><button class="btn green" data-shop="${i}">แลก</button></div>`).join('');
+    document.querySelectorAll('[data-shop]').forEach(b=>b.onclick=()=>{const s=SHOP[+b.dataset.shop]; if(player.coins>=s.c){player.coins-=s.c;refresh();flash(`แลก "${s.n}" สำเร็จ! รับได้ที่ห้องกิจการนักเรียน 🎉`);}else flash(`เหรียญไม่พอ (ต้องการ 🪙${s.c}) — ของหายากให้คราฟต์เอาที่โต๊ะคราฟต์`);});
+  }
+  let hintTimer=null;
+  function flash(msg){const h=$('hint');h.style.display='block';h.textContent=msg;clearTimeout(hintTimer);hintTimer=setTimeout(()=>{h.style.display='none';},2800);}
+
+  /* ============ TOOLBAR ============ */
+  function renderToolbar(){
+    $('toolbar').innerHTML=TOOLS.map((t,i)=>`<div class="slot ${i===player.activeTool?'active':''}" data-tool="${i}"><span class="k">${i+1}</span>${t.e}</div>`).join('');
+    document.querySelectorAll('[data-tool]').forEach(s=>s.onclick=()=>setTool(+s.dataset.tool));
+  }
+  function setTool(i){ player.activeTool=i; renderToolbar(); }
+
+  /* ============ CHARACTER BUILDER ============ */
+  function buildOptions(){
+    const swatch=(arr,sel,cb)=>arr.map((v,i)=>{const d=document.createElement('div');d.className='swatch'+(sel===i?' sel':'');d.style.background=v;d.onclick=()=>cb(i);return d;});
+    const chip=(arr,sel,cb,withDot)=>arr.map((v,i)=>{const c=document.createElement('div');c.className='chip'+(sel===i?' sel':'');if(withDot){c.innerHTML=`<span class="dot" style="background:${HAIRCOLOR[i]}"></span>`;}else c.textContent=v.n;c.onclick=()=>cb(i);return c;});
+    const put=(id,nodes)=>{const el=$(id);el.innerHTML='';nodes.forEach(n=>el.appendChild(n));};
+    put('opt-body', chip(BODY,look.body,i=>{look.body=i;buildOptions();drawPreview();}));
+    put('opt-skin', swatch(SKIN,look.skin,i=>{look.skin=i;buildOptions();drawPreview();}));
+    put('opt-hairstyle', chip(HAIRSTYLE,look.hairstyle,i=>{look.hairstyle=i;buildOptions();drawPreview();}));
+    put('opt-haircolor', HAIRCOLOR.map((v,i)=>{const d=document.createElement('div');d.className='swatch'+(look.haircolor===i?' sel':'');d.style.background=v;d.onclick=()=>{look.haircolor=i;buildOptions();drawPreview();};return d;}));
+    put('opt-shirt', swatch(SHIRT,look.shirt,i=>{look.shirt=i;buildOptions();drawPreview();}));
+    put('opt-pants', swatch(PANTS,look.pants,i=>{look.pants=i;buildOptions();drawPreview();}));
+    put('opt-hat', chip(HAT,look.hat,i=>{look.hat=i;buildOptions();drawPreview();}));
+  }
+  $('dressbtn').onclick=()=>{const r=$('dress');const open=r.style.display!=='block';r.style.display=open?'block':'none';if(open){buildOptions();drawPreview();}};
+  $('dressdone').onclick=()=>{$('dress').style.display='none'; if(typeof netLook==="function") netLook();};
+
+  /* ============ FULLSCREEN ============ */
+  function toggleFS(){
+    const el=$('stageInner');
+    if(!document.fullscreenElement){ (el.requestFullscreen||el.webkitRequestFullscreen)&&(el.requestFullscreen?el.requestFullscreen():el.webkitRequestFullscreen()); }
+    else { (document.exitFullscreen||document.webkitExitFullscreen)&&(document.exitFullscreen?document.exitFullscreen():document.webkitExitFullscreen()); }
+  }
+  $('fsBtn').onclick=toggleFS;
+  // Keep on-screen controls + popups usable in fullscreen by moving them inside the fullscreened wrapper.
+  const stageInner=$('stageInner'), mobileCtrl=document.querySelector('.mobile-ctrl');
+  const ctrlHome=mobileCtrl?mobileCtrl.parentNode:null;
+  // elements that must live inside the fullscreen top-layer to be visible
+  const fsMovable=[mobileCtrl, $('quizbox'), $('fishbox'), $('minebox')].filter(Boolean);
+  const fsHome=fsMovable.map(el=>el.parentNode);
+  function onFSChange(){
+    const fsEl=document.fullscreenElement||document.webkitFullscreenElement;
+    const entering = fsEl===stageInner;
+    // move popups into / out of the fullscreen wrapper
+    fsMovable.forEach((el,i)=>{ if(entering) stageInner.appendChild(el); else if(fsHome[i]) fsHome[i].appendChild(el); });
+    if(mobileCtrl){
+      if(entering){
+        mobileCtrl.style.display='flex'; mobileCtrl.style.position='absolute';
+        mobileCtrl.style.left='0'; mobileCtrl.style.right='0'; mobileCtrl.style.bottom='58px';
+        mobileCtrl.style.zIndex='8'; mobileCtrl.style.margin='0';
+      } else {
+        mobileCtrl.removeAttribute('style');
+      }
+    }
+  }
+  document.addEventListener('fullscreenchange',onFSChange);
+  document.addEventListener('webkitfullscreenchange',onFSChange);
+
+  /* ============ MULTIPLAYER NETWORKING ============ */
+  const NET = {
+    ws:null, id:null, peers:{}, connected:false, lastSent:0, lastState:null, reconnectT:null
+  };
+  function netStatus(txt,color){
+    const el=$('netStatus'); if(!el)return;
+    el.textContent=txt; el.style.color=color||'#cdbb90';
+  }
+  function netConnect(){
+    // same-origin WebSocket (ws:// for http, wss:// for https)
+    const proto = location.protocol==="https:" ? "wss://" : "ws://";
+    let url = proto + location.host;
+    // allow ?server=... override for hosting the client and server separately
+    const q=new URLSearchParams(location.search).get('server');
+    if(q) url = q;
+    try { NET.ws = new WebSocket(url); }
+    catch(e){ netStatus("เชื่อมต่อไม่ได้ (เล่นเดี่ยว)", "#e0594d"); return; }
+
+    NET.ws.onopen = ()=>{
+      NET.connected=true; netStatus("ออนไลน์ ✓","#7be37b");
+      sendJoin();
+    };
+    NET.ws.onclose = ()=>{
+      NET.connected=false; NET.peers={}; netStatus("หลุดการเชื่อมต่อ… กำลังต่อใหม่","#e6862a");
+      clearTimeout(NET.reconnectT); NET.reconnectT=setTimeout(netConnect, 2500);
+    };
+    NET.ws.onerror = ()=>{ netStatus("เล่นแบบออฟไลน์ (ไม่มีเซิร์ฟเวอร์)","#e0594d"); };
+    NET.ws.onmessage = (ev)=>{
+      let m; try{ m=JSON.parse(ev.data); }catch{ return; }
+      if(m.t==="welcome"){ NET.id=m.id; setPeers(m.peers); }
+      else if(m.t==="peers"){ setPeers(m.peers); }
+      else if(m.t==="chat"){ showChat(m.from, m.text, m.id===NET.id); }
+    };
+  }
+  function setPeers(list){
+    const next={};
+    (list||[]).forEach(p=>{ next[p.id]=p; });
+    NET.peers=next;
+    updatePlayerCount();
+  }
+  function updatePlayerCount(){
+    const n=Object.keys(NET.peers).length + (joined?1:0);
+    const el=$('playerCount'); if(el) el.textContent=n;
+  }
+  function sendJoin(){
+    if(!NET.connected) return;
+    NET.ws.send(JSON.stringify({
+      t:"join", name:player.name, map:player.map,
+      x:Math.round(player.px), y:Math.round(player.py), dir:player.dir, lvl:player.lvl, look:look
+    }));
+  }
+  function netSend(force){
+    if(!NET.connected || !joined) return;
+    const now=performance.now();
+    const st={x:Math.round(player.px),y:Math.round(player.py),dir:player.dir,frame:player.moving?player.frame:0,map:player.map,lvl:player.lvl};
+    const changed = !NET.lastState ||
+      st.x!==NET.lastState.x || st.y!==NET.lastState.y || st.dir!==NET.lastState.dir ||
+      st.frame!==NET.lastState.frame || st.map!==NET.lastState.map || st.lvl!==NET.lastState.lvl;
+    if(!force && !changed) return;
+    if(!force && now-NET.lastSent < 60) return; // throttle ~16/sec max
+    NET.lastSent=now; NET.lastState=st;
+    NET.ws.send(JSON.stringify(Object.assign({t:"move"}, st)));
+  }
+  function netLook(){ if(NET.connected) NET.ws.send(JSON.stringify({t:"look", look:look, name:player.name})); }
+
+  /* ---- simple chat ---- */
+  function showChat(from, text, mine){
+    const log=$('chatLog'); if(!log)return;
+    const d=document.createElement('div');
+    d.className='chat-line'+(mine?' mine':'');
+    d.innerHTML=`<b>${escapeHtml(from)}:</b> ${escapeHtml(text)}`;
+    log.appendChild(d);
+    while(log.children.length>40) log.removeChild(log.firstChild);
+    log.scrollTop=log.scrollHeight;
+  }
+  function escapeHtml(s){ return (""+s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function sendChat(){
+    const inp=$('chatInput'); if(!inp)return;
+    const t=inp.value.trim(); if(!t)return;
+    inp.value='';
+    if(NET.connected) NET.ws.send(JSON.stringify({t:"chat", text:t}));
+    else showChat(player.name||"คุณ", t, true); // offline echo
+  }
+
+  /* ============ START ============ */
+  $('join').onclick=()=>{
+    player.grade=+$('grade').value; player.name=$('pname').value.trim()||'ผู้เล่น';
+    joined=true; player.map="farm"; player.px=MAPS.farm.spawn.x*TILE; player.py=MAPS.farm.spawn.y*TILE;
+    player.dir="down"; player.coins=0; player.gems=0; player.lvl=1; player.xp=0; player.xpNext=50;
+    player.energy=100; player.energyMax=100; player.hp=100; player.hpMax=100; player.bag={}; player.tools={rod:1,pick:1}; player.activeTool=0;
+    queues={}; buildQuests();
+    // reset transient state + close any open modals (safe restart)
+    fishing=false; if(fishRAF)cancelAnimationFrame(fishRAF); fishState=null;
+    quizMode=null; quizCtx=null; mineCtx=null;
+    $('quizbox').style.display='none'; $('fishbox').style.display='none'; $('minebox').style.display='none';
+    $('start-ov').style.display='none'; $('zoneName').textContent=MAPS.farm.name;
+    renderToolbar();
+    flash(`ลุยเลย ${player.name}! เริ่มที่ฟาร์ม — เดินไปชน 🌱/❓ ตอบคำศัพท์เก็บวัตถุดิบ ⚡`);
+    cv.focus(); refresh();
+    // multiplayer: connect (or re-announce if already connected)
+    if(NET.connected) sendJoin(); else netConnect();
+    NET.lastState=null; netSend(true);
+  };
+
+  // chat wiring
+  if($('chatSend')) $('chatSend').onclick=sendChat;
+  if($('chatInput')) $('chatInput').addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault(); sendChat(); $('chatInput').blur(); cv.focus();} });
+
+  renderToolbar(); renderShop(); refresh();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
